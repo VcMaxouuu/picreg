@@ -1,0 +1,139 @@
+---
+title: "Getting started with picreg"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Getting started with picreg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center"
+)
+set.seed(1)
+```
+
+## What `picreg` does
+
+`picreg` fits sparse generalised linear models in high dimensions. Unlike
+`glmnet`, the regularisation parameter $\lambda$ is **not** chosen by
+cross-validation: it is computed analytically (or by short Monte Carlo)
+from the **Pivotal Detection Boundary** (PDB) — the $(1-\alpha)$
+quantile of a pivotal null-distribution statistic. One fit, no
+hyperparameter tuning loop.
+
+The package supports six families and three penalties:
+
+| Family | Continuous / discrete | Response format |
+|---|---|---|
+| `"gaussian"` | continuous | `y` numeric |
+| `"binomial"` | binary | `y` in $\{0, 1\}$ |
+| `"poisson"` | counts | `y` non-negative integer |
+| `"exponential"` | positive continuous | `y` positive |
+| `"gumbel"` | continuous (heavy upper tail) | `y` numeric |
+| `"cox"` | survival | `y = cbind(time, event)` |
+
+Penalties: `"lasso"`, `"scad"` (with `scad_a`), `"mcp"` (with `mcp_gamma`).
+
+```{r load}
+library(picreg)
+```
+
+## First fit — Gaussian + SCAD
+
+We generate a sparse design with $n = 200$, $p = 500$, $s = 5$ true
+non-zero coefficients of magnitude $3$:
+
+```{r gaussian-fit}
+n <- 200; p <- 500; s <- 5
+X <- matrix(rnorm(n * p), n, p)
+true_features <- sort(sample.int(p, s))
+beta <- numeric(p); beta[true_features] <- 3
+y <- as.numeric(X %*% beta + rnorm(n))
+
+fit <- pic(X, y, family = "gaussian", penalty = "scad")
+fit
+```
+
+The selected support and the PDB-chosen $\lambda$:
+
+```{r gaussian-inspect}
+fit$selected
+fit$lambda
+
+# Recovery check
+setequal(fit$selected, true_features)
+```
+
+### Visualising the coefficient pattern
+
+```{r gaussian-plot, fig.cap = "Non-zero coefficients of the SCAD fit."}
+plot(fit)
+```
+
+### Visualising the PDB null distribution
+
+The histogram of the simulated null gradient-norm statistics, with a
+vertical line at the selected $\hat\lambda$:
+
+```{r gaussian-lambda-plot, fig.cap = "PDB null distribution and selected lambda."}
+plot(fit$lambda_pdb)
+```
+
+A descriptive summary of the null distribution is available via
+`pdb_summary()`:
+
+```{r gaussian-pdb-summary}
+pdb_summary(fit)
+```
+
+## Logistic regression
+
+```{r binomial-fit}
+eta  <- X %*% beta
+p_y  <- 1 / (1 + exp(-eta))
+y_b  <- rbinom(n, 1, p_y)
+
+fit_bin <- pic(X, y_b, family = "binomial", penalty = "lasso")
+fit_bin
+setequal(fit_bin$selected, true_features)
+```
+
+Prediction returns the response-scale probability by default; pass
+`type = "link"` for the linear predictor or `type = "class"` for
+hard $\{0, 1\}$ labels:
+
+```{r binomial-predict}
+head(predict(fit_bin, X, type = "response"))
+head(predict(fit_bin, X, type = "class"))
+```
+
+## Switching penalty without rerunning PDB
+
+The 4-step path always starts with three warm-up steps under L1 and
+switches to the requested penalty only at the final step. Setting
+`penalty = "lasso"`, `"scad"`, or `"mcp"` changes only the last step
+— the lambda selector is identical:
+
+```{r penalty-comparison}
+fits <- lapply(c("lasso", "scad", "mcp"),
+               function(pen) pic(X, y, family = "gaussian", penalty = pen))
+sapply(fits, function(f) length(f$selected))
+sapply(fits, function(f) f$lambda)   # identical (same PDB call)
+```
+
+## Where to go next
+
+- [Cox regression with picreg] — survival analysis, baseline functions,
+  c-index.
+- [Diagnostics: phase transitions and PDB asymptotics] — empirical
+  validation of the method on synthetic data.
+- `?pic` and `?lambda_pdb` for the full argument reference.

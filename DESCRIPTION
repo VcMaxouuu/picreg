@@ -1,0 +1,40 @@
+Package: picreg
+Type: Package
+Title: Variable Selection using the Pivotal Information Criterion
+Version: 0.1.0
+Date: 2026-05-18
+Authors@R: c(
+    person("Maxime", "Van Cutsem",
+           role  = c("aut", "cre"),
+           email = "maxime.vancutsem@unige.ch"))
+Description: Sparse regression and classification with
+    automatic regularisation parameter selection via the Pivotal
+    Detection Boundary (PDB) method. Implements FISTA optimisation for
+    L1, SCAD and MCP penalties across Gaussian, Binomial, Poisson,
+    Exponential, Gumbel and Cox families. The PDB selector chooses the
+    regularisation parameter as a quantile of a pivotal null-distribution
+    statistic, eliminating the need for cross-validation.
+    See <doi:10.48550/arXiv.2603.04172>.
+License: GPL-2
+URL: <TODO: project URL, e.g. https://github.com/MaximeVanCutsem/picreg>
+BugReports: <TODO: issue tracker URL, e.g. https://github.com/MaximeVanCutsem/picreg/issues>
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 3.6.0)
+Imports:
+    stats,
+    graphics,
+    grDevices,
+    Rcpp (>= 1.0.10)
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+SystemRequirements: C++17
+RoxygenNote: 7.3.2
+Config/roxygen2/version: 8.0.0
+Config/testthat/edition: 3

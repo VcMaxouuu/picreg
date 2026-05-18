@@ -1,0 +1,180 @@
+---
+title: "Diagnostics: phase transitions and PDB asymptotics"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Diagnostics: phase transitions and PDB asymptotics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  fig.align = "center"
+)
+set.seed(1)
+```
+
+This vignette shows the two diagnostic tools shipped with `picreg`. Both
+are designed as empirical checks of the method's theoretical claims.
+
+```{r load}
+library(picreg)
+```
+
+## 1. Phase-transition analysis
+
+`phase_transition()` answers the question: **at what sparsity level $s$
+does support recovery break down?** For fixed problem geometry $(n, p)$
+and signal magnitude, it varies $s$ from $0$ to `s_max` and estimates,
+by Monte Carlo, the probability of exact support recovery.
+
+Three metrics are stored simultaneously per cell:
+
+- `exact_recovery` — $P(\hat S = S)$, the headline number.
+- `tpr` — true positive rate, $|\hat S \cap S| / |S|$.
+- `fdr` — false discovery rate, $|\hat S \setminus S| / \max(|\hat S|, 1)$.
+
+### A single configuration, multiple penalties
+
+```{r pt-single, fig.cap = "Phase transition under three penalties."}
+pt <- phase_transition(
+  n        = 200,
+  p        = 500,
+  type     = "gaussian",
+  s_max    = 12,
+  m        = 30,
+  penalty  = c("lasso", "scad", "mcp"),
+  verbose  = FALSE
+)
+plot(pt)
+```
+
+Reading the plot: at low $s$ all three penalties recover the support
+perfectly. As $s$ grows the curves drop — SCAD and MCP typically
+maintain recovery further than L1 thanks to their unbiased-large
+penalisation.
+
+```{r pt-other-metric, fig.cap = "Same data, true positive rate."}
+plot(pt, metric = "tpr")
+```
+
+```{r pt-fdr, fig.cap = "Same data, false discovery rate."}
+plot(pt, metric = "fdr")
+```
+
+The numerical table is in `pt$results`:
+
+```{r pt-results}
+head(pt$results)
+```
+
+### Comparing two geometries
+
+```{r pt-geometries, fig.cap = "Effect of n on the transition."}
+pt2 <- phase_transition(
+  n       = c(150, 400),
+  p       = c(500, 500),
+  type    = "gaussian",
+  s_max   = 15,
+  m       = 30,
+  penalty = "scad",
+  verbose = FALSE
+)
+plot(pt2)
+```
+
+Doubling $n$ shifts the transition rightwards, as expected from
+classical high-dimensional theory.
+
+## 2. PDB asymptotic behaviour
+
+The PDB selector has three flavours:
+
+- `"mc_exact"` — Monte Carlo under the family's null. Family-specific,
+  most accurate, slowest.
+- `"mc_gaussian"` — Monte Carlo under a Gaussian approximation (CLT).
+  Family-agnostic, fast.
+- `"analytical"` — Bonferroni closed-form bound. Instant, conservative.
+
+`pdb_asymptotic()` runs all three on a Gaussian design across a
+grid of sample sizes, returning the simulated null distributions and
+the three resulting $\hat\lambda$ values. The intent is to
+**empirically validate that `"mc_gaussian"` converges to
+`"mc_exact"` as $n$ grows** — which justifies using the much faster
+Gaussian path in the large-$n$ regime.
+
+### Gaussian family — sanity check
+
+For the Gaussian family `"mc_exact"` reduces analytically to the
+Gaussian null, so the two empirical distributions should coincide
+at every $n$:
+
+```{r asym-gaussian, fig.cap = "Gaussian family: mc_exact and mc_gaussian coincide.", fig.height = 6}
+as_g <- pdb_asymptotic(
+  n_grid  = c(100, 500, 2000),
+  p       = 200,
+  type    = "gaussian",
+  n_simu  = 2000L,
+  verbose = FALSE
+)
+plot(as_g)
+```
+
+The histograms overlap perfectly — this is the consistency check.
+
+### Poisson family — non-trivial convergence
+
+For non-Gaussian families, the two distributions are initially distinct
+and converge only asymptotically. Poisson is a particularly clear case
+because the count-data null is far from Gaussian at small $n$:
+
+```{r asym-poisson, fig.cap = "Poisson family: mc_exact converges to mc_gaussian as n grows.", fig.height = 6}
+as_p <- pdb_asymptotic(
+  n_grid  = c(50, 200, 1000),
+  p       = 200,
+  type    = "poisson",
+  n_simu  = 2000L,
+  verbose = FALSE
+)
+plot(as_p)
+print(as_p)
+```
+
+At $n = 50$ the Poisson `"mc_exact"` distribution (solid grey fill) sits
+visibly to the right of the Gaussian step (dashed line); by $n = 1000$
+they coincide. The vertical navy line marks $\hat\lambda_{\rm PDB}$ —
+what `pic()` would actually use — and the dotted black line marks the
+analytical Bonferroni bound.
+
+### Practical takeaway
+
+The diagnostic suggests when it is safe to swap `lambda_method =
+"mc_exact"` for `"mc_gaussian"`, trading a small calibration loss at
+small $n$ for a significant speed-up at large $n$:
+
+```{r mc-gaussian-fit}
+n <- 500; p <- 1000; s <- 5
+X <- matrix(rnorm(n * p), n, p)
+beta <- numeric(p); beta[sample.int(p, s)] <- 3
+y <- as.numeric(X %*% beta + rnorm(n))
+
+fit_exact    <- pic(X, y, family = "gaussian", lambda_method = "mc_exact")
+fit_gaussian <- pic(X, y, family = "gaussian", lambda_method = "mc_gaussian")
+
+c(exact = fit_exact$lambda, gaussian = fit_gaussian$lambda)
+setequal(fit_exact$selected, fit_gaussian$selected)
+```
+
+## Summary
+
+| Diagnostic | Question answered | Use when |
+|---|---|---|
+| `phase_transition()` | "How sparse can my problem be and still be recoverable?" | Benchmarking, paper figures |
+| `pdb_asymptotic()` | "Can I use the fast Gaussian PDB instead of the exact one?" | Tuning, regime check |

@@ -205,3 +205,21 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# R / R package artifacts
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+.DS_Store
+src/*.o
+src/*.so
+src/*.dll
+src/symbols.rds
+*.Rcheck/
+*.tar.gz
+
+# Claude Code workspace settings (local only)
+.claude/
+
