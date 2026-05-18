@@ -16,8 +16,8 @@ Description: Sparse regression and classification with
     statistic, eliminating the need for cross-validation.
     See <doi:10.48550/arXiv.2603.04172>.
 License: GPL-2
-URL: <TODO: project URL, e.g. https://github.com/MaximeVanCutsem/picreg>
-BugReports: <TODO: issue tracker URL, e.g. https://github.com/MaximeVanCutsem/picreg/issues>
+URL: <https://github.com/VcMaxouuu/picreg>
+BugReports: <https://github.com/VcMaxouuu/picreg/issues>
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.6.0)

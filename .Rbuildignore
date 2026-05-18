@@ -3,7 +3,6 @@
 ^\.DS_Store$
 ^\.RData$
 ^\.Rhistory$
-^dev$
 ^\.claude$
 ^\.git$
 ^\.gitignore$
