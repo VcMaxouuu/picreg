@@ -4,8 +4,12 @@
 ^\.RData$
 ^\.Rhistory$
 ^\.claude$
-^\.git$
-^\.gitignore$
 ^src/.*\.o$
 ^src/.*\.so$
 ^src/.*\.dll$
+^cran-comments\.md$
+^bench$
+^.*\.tar\.gz$
+^picreg-manual\.pdf$
+^\.Rd2pdf.*$
+^.*\.Rcheck$

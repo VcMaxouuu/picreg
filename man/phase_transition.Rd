@@ -9,90 +9,125 @@ phase_transition(
   p,
   type = c("gaussian", "binomial", "poisson", "exponential", "gumbel", "cox"),
   s_max,
-  m = 100,
-  penalty = c("lasso", "scad", "mcp"),
+  m = 50,
+  penalty = "lasso",
   beta_value = 3,
   lambda_method = "mc_exact",
   lambda_alpha = 0.05,
   lambda_n_simu = 5000L,
-  verbose = TRUE
+  verbose = FALSE,
+  parallel = FALSE,
+  workers = parallel::detectCores() - 1L
 )
 }
 \arguments{
 \item{n}{Integer or integer vector — number of observations per configuration.}
 
-\item{p}{Integer or integer vector of the same length as `n` — number of features.}
+\item{p}{Integer or integer vector of the same length as \code{n} — number of features.}
 
-\item{type}{Family name: `"gaussian"`, `"binomial"`,
-`"poisson"`, `"exponential"`, `"gumbel"`, or `"cox"`.}
+\item{type}{Family name: \code{"gaussian"}, \code{"binomial"},
+\code{"poisson"}, \code{"exponential"}, \code{"gumbel"}, or \code{"cox"}.}
 
-\item{s_max}{Largest sparsity level evaluated. Must satisfy `s_max < min(p)`.}
+\item{s_max}{Largest sparsity level evaluated. Must satisfy \code{s_max < min(p)}.}
 
-\item{m}{Number of Monte Carlo replications per `s`.}
+\item{m}{Number of Monte Carlo replications per \code{s}.}
 
-\item{penalty}{One or more penalties for `pic()`: `"lasso"`, `"scad"`, or `"mcp"`.}
+\item{penalty}{One or more penalties for \code{pic()}: \code{"lasso"}, \code{"scad"}, or \code{"mcp"}.}
 
 \item{beta_value}{Magnitude of the non-zero coefficients used to generate
-the response. The sign is fixed to `+`.}
+the response. The sign is fixed to \code{+}.}
 
-\item{lambda_method}{Passed to `pic()`. Default `"mc_exact"`.}
+\item{lambda_method}{Passed to \code{pic()}. Default \code{"mc_exact"}.}
 
 \item{lambda_alpha}{Nominal level for the PDB selector.}
 
 \item{lambda_n_simu}{Monte Carlo size for the PDB selector.}
 
-\item{verbose}{Logical; if `TRUE`, prints a one-line progress message per `(n, p, penalty, s)`.}
+\item{verbose}{Logical; if \code{TRUE}, prints a one-line progress message per \verb{(n, p, penalty, s)}.}
+
+\item{parallel}{Logical; if \code{TRUE}, distribute the \code{m} Monte Carlo
+replications of each \verb{(n, p, penalty, s)} cell across multiple R
+processes via the \code{future} framework (\code{future::multisession} plan).}
+
+\item{workers}{Integer; number of background R processes to use when
+\code{parallel = TRUE}. Ignored otherwise.}
 }
 \value{
-An object of class `c("pic.phase_transition", "pic.diagnostic")`
-  with components:
-  \describe{
-    \item{s_grid}{`0:s_max`.}
-    \item{exact_recovery, tpr, fdr}{matrices of shape `(length(n) * length(penalty), s_max + 1)` —
-      one row per `(n, p, penalty)` curve, one column per sparsity level.}
-    \item{curve_n, curve_p, curve_penalty}{Curve descriptors aligned with the rows of the metric matrices.}
-    \item{config}{A list of all configuration arguments for downstream plotting / reporting.}
-    \item{call}{The call.}
-  }
+An object of class \code{c("pic.phase_transition", "pic.diagnostic")}.
+\item{s_grid}{\code{0:s_max}.}
+\item{exact_recovery, tpr, fdr}{Matrices of shape \verb{(length(n) * length(penalty), s_max + 1)} -
+one row per \verb{(n, p, penalty)} curve, one column per sparsity level}
+\item{curve_n, curve_p, curve_penalty}{Curve descriptors aligned with the rows of the metric matrices.}
+\item{config}{A list of all configuration arguments for downstream plotting / reporting.}
+\item{call}{The call.}
 }
 \description{
-For a fixed `(n, p)` configuration, varies the sparsity level `s`
-from `0` to `s_max` and, for each `s`, estimates by Monte Carlo
-(`m` replications) the probability that `pic()` recovers exactly
-the support of the true coefficient vector.
+For a fixed \verb{(n, p)} configuration, varies the sparsity level \code{s}
+from \code{0} to \code{s_max} and, for each \code{s}, estimates by Monte Carlo
+(\code{m} replications) the probability that \code{pic()} recovers exactly
+the support of the true coefficient vector. If several penalties are
+supplied, one result is produced for each \verb{(n, p, penalty)} combination.
 }
 \details{
 At each Monte Carlo replicate a design matrix is drawn from a
-standard Gaussian, `s` features are sampled uniformly at random,
-the response is generated under the chosen `type`, and one `pic`
+standard Gaussian, \code{s} features are sampled uniformly at random,
+the response is generated under the chosen \code{type}, and one \code{pic}
 fit is run for each requested penalty. The selected support is
 compared to the truth and three metrics are stored:
 
 \describe{
-  \item{exact_recovery}{1 if the selected set equals the true set, 0 otherwise.}
-  \item{tpr}{|selected \eqn{\cap} true| / s — true positive rate. For `s = 0`, this is set to 1 when no true feature exists.}
-  \item{fdr}{|selected \\ true| / max(|selected|, 1) — false discovery rate.}
+\item{\code{exact_recovery}}{1 if the selected set equals the true set, 0 otherwise.}
+\item{\code{tpr}}{\eqn{\left|\hat{S}\cap S\right| / |S|} - true positive rate. For \code{s = 0}, this is set to 1 when no true feature exists.}
+\item{\code{fdr}}{\eqn{\left|\hat{S}\setminus S\right| / \max{(|\hat{S}|, 1)}} - false discovery rate.}
 }
+\subsection{Details on data sampling}{
 
-`n` and `p` may be scalars (one configuration) or vectors of equal length
-(one configuration per `(n[k], p[k])` pair). If several penalties are
-supplied, one curve is produced for each `(n, p, penalty)` combination.
+At each replicate, the design \eqn{X} is drawn iid
+\eqn{\mathcal{N}(0, 1)}, the true support \eqn{S} is sampled
+uniformly at random, and \eqn{\beta_j = } \code{beta_value} for
+\eqn{j \in S}, \eqn{\beta_j = 0} otherwise. The linear predictor
+is \eqn{\eta = X\beta}. The response \eqn{y} is then drawn
+conditionally on \eqn{\eta} according to the requested family:
+
+\describe{
+\item{\code{"gaussian"}}{
+\eqn{y_i = \eta_i + \varepsilon_i} with
+\eqn{\varepsilon_i \sim \mathcal{N}(0, 1)}.
+}
+\item{\code{"binomial"}}{
+\eqn{y_i \sim \mathrm{Bernoulli}\!\left(\sigma(\eta_i)\right)},
+where \eqn{\sigma(z) = 1 / (1 + e^{-z})} is the logistic
+function.
+}
+\item{\code{"poisson"}}{
+\eqn{y_i \sim \mathrm{Poisson}\!\left(e^{\eta_i}\right)}.
+}
+\item{\code{"exponential"}}{
+\eqn{y_i \sim \mathrm{Exp}\!\left(\mathrm{rate} = e^{\eta_i}\right)}.
+}
+\item{\code{"gumbel"}}{
+\eqn{y_i = \eta_i + \varepsilon_i} with
+\eqn{\varepsilon_i \sim \mathrm{Gumbel}(0, 1)}, drawn as
+\eqn{-\log(-\log U_i)} for \eqn{U_i \sim \mathcal{U}(0, 1)}.
+}
+\item{\code{"cox"}}{
+Event times \eqn{T_i \sim \mathrm{Exp}\!\left(e^{\eta_i}\right)}
+and independent censoring times
+\eqn{C_i \sim \mathrm{Exp}(1)}. The response is the 2-column
+matrix \eqn{\bigl(\min(T_i, C_i),\, \mathbf{1}\{T_i \le C_i\}\bigr)}.
+}
+}
+}
 }
 \examples{
-\dontrun{
-# Single configuration, multiple penalties
-pt <- phase_transition(n = 200, p = 500, type = "gaussian",
-                       s_max = 20, m = 50,
-                       penalty = c("lasso", "scad", "mcp"))
-plot(pt)
-
-# Two configurations and two penalties on the same plot
-pt <- phase_transition(n = c(200, 400), p = c(500, 500),
-                       type = "binomial", s_max = 15, m = 50,
-                       penalty = c("lasso", "scad"))
+\donttest{
+pt <- phase_transition(n = 50, p = 100, type = "gaussian",
+                       s_max = 8, m = 20,
+                       penalty = c("lasso", "scad"), 
+                       parallel = TRUE)
 plot(pt)
 }
 }
 \seealso{
-[plot.pic.phase_transition()] for visualisation.
+\code{\link[=plot.pic.phase_transition]{plot.pic.phase_transition()}} for visualisation.
 }

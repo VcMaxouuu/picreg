@@ -10,7 +10,7 @@ pdb_asymptotic(
   type = c("gaussian", "binomial", "poisson", "exponential", "gumbel", "cox"),
   alpha = 0.05,
   n_simu = 5000L,
-  verbose = TRUE
+  verbose = FALSE
 )
 }
 \arguments{
@@ -18,51 +18,45 @@ pdb_asymptotic(
 
 \item{p}{Number of features (scalar integer).}
 
-\item{type}{Family name: `"gaussian"`, `"binomial"`,
-`"poisson"`, `"exponential"`, `"gumbel"`, or `"cox"`.}
+\item{type}{Family name: \code{"gaussian"}, \code{"binomial"},
+\code{"poisson"}, \code{"exponential"}, \code{"gumbel"}, or \code{"cox"}.}
 
 \item{alpha}{Nominal level used for the (1 - alpha) quantile.}
 
 \item{n_simu}{Monte Carlo size for each selector.}
 
-\item{verbose}{Logical; if `TRUE`, prints a one-line progress
-message per `n`.}
+\item{verbose}{Logical; if \code{TRUE}, prints a one-line progress
+message per \code{n}.}
 }
 \value{
-An object of class `c("pic.pdb_asymptotic", "pic.diagnostic")`
-  with components:
-  \describe{
-    \item{n_grid, p, type, alpha, n_simu}{Configuration.}
-    \item{stats_exact, stats_gaussian}{Lists of length `length(n_grid)`;
-      each element is a numeric vector of length `n_simu` containing
-      the simulated null statistics from the corresponding selector.}
-    \item{lambda_exact, lambda_gaussian, lambda_analytical}{Numeric
-      vectors of length `length(n_grid)` — the (1 - alpha) quantile
-      under each selector at each `n`.}
-    \item{call}{The call.}
-  }
+An object of class \code{c("pic.pdb_asymptotic", "pic.diagnostic")}.
+\item{n_grid, p, type, alpha, n_simu}{Configuration.}
+\item{stats_exact, stats_gaussian}{Lists of length \code{length(n_grid)} where
+each element is a numeric vector of length \code{n_simu} containing
+the simulated null statistics from the corresponding selector.}
+\item{lambda_exact, lambda_gaussian, lambda_analytical}{Numeric
+vectors of length \code{length(n_grid)} - the (1 - alpha) quantile
+under each selector at each \code{n}.}
+\item{call}{The call.}
 }
 \description{
-For each `n` in `n_grid`, draws a standardised Gaussian design matrix
-of shape `(n, p)` and computes the null gradient-norm statistic via
-the three available selectors: `"mc_exact"`, `"mc_gaussian"`, and
-`"analytical"`. Stores the simulated Monte Carlo statistics and the
-three resulting \eqn{\hat\lambda} values per `n`.
+For each \code{n} in \code{n_grid}, draws a standardised Gaussian design matrix
+of shape \verb{(n, p)} and computes the null gradient-norm statistic via
+the three available selectors: \code{"mc_exact"}, \code{"mc_gaussian"}, and
+\code{"analytical"}. Stores the simulated Monte Carlo statistics and the
+three resulting \eqn{\hat\lambda} values per \code{n}.
 }
 \details{
-The intended use is to **visualise the convergence** of the exact
+The intended use is to \strong{visualise the convergence} of the exact
 family-specific null distribution to the Gaussian approximation as
-`n` grows — i.e., to check empirically that `mc_gaussian` is a valid
-(and much faster) substitute for `mc_exact` in the asymptotic
-regime.
+\code{n} grows — i.e., to check empirically that \code{mc_gaussian} is a valid
+substitute for \code{mc_exact} in the asymptotic regime.
 }
 \examples{
-\dontrun{
 as_ <- pdb_asymptotic(n_grid = c(50, 200, 1000),
                       p = 200, type = "poisson")
 plot(as_)
 }
-}
 \seealso{
-[plot.pic.pdb_asymptotic()] for visualisation.
+\code{\link[=plot.pic.pdb_asymptotic]{plot.pic.pdb_asymptotic()}} for visualisation.
 }

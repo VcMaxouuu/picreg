@@ -4,8 +4,42 @@
 \alias{pic_penalties}
 \title{Sparsity-inducing penalties for pic.}
 \description{
-Three penalties are supported and identified by lowercase name to match
-the C++ registry: `"lasso"`, `"scad"`, `"mcp"`. Each penalty object is a
-lightweight list carrying its name and concavity parameters. The actual
-evaluation and proximal operators live in C++ (`src/penalty_*.cpp`).
+Three penalties are supported, identified by lowercase name to match
+the C++ registry. Each penalty enters the \code{\link[=pic]{pic()}} objective as
+\deqn{\mathrm{pen}(\beta) = \sum_{j=1}^p p_\lambda(|\beta_j|),}
+where \eqn{p_\lambda(\cdot)} depends on the penalty.
+}
+\details{
+\describe{
+\item{\code{"lasso"}}{
+L1 (soft-thresholding) penalty:
+\deqn{p_\lambda(|t|) = \lambda |t|.}
+Convex, gives the strongest shrinkage on large coefficients
+bias does not vanish as \eqn{|t| \to \infty}.
+}
+\item{\code{"scad"} (Smoothly Clipped Absolute Deviation, Fan & Li 2001)}{
+Non-convex penalty with concavity parameter \code{scad_a > 2}
+(default 3.7):
+\deqn{p_\lambda'(|t|) = \lambda\!\left\{
+       \mathbf{1}\{|t| \le \lambda\}
+       + \frac{(a\lambda - |t|)_+}{(a - 1)\lambda}
+         \mathbf{1}\{|t| > \lambda\}\right\}.}
+Behaves like the lasso for small \eqn{|t|}, then tapers off so
+large coefficients are barely penalised - yields nearly unbiased
+estimates on strong signals.
+}
+\item{\code{"mcp"} (Minimax Concave Penalty, Zhang 2010)}{
+Non-convex penalty with concavity parameter \code{mcp_gamma > 1}
+(default 3.0):
+\deqn{p_\lambda'(|t|) = \left(\lambda - \frac{|t|}{\gamma}\right)_+.}
+Similar motivation as SCAD but a smoother transition: starts at
+the lasso derivative for small \eqn{|t|} and tapers linearly to
+zero at \eqn{|t| = \gamma\lambda}.
+}
+}
+
+The actual evaluation and proximal operators live in C++
+(\code{src/penalty_*.cpp}). Larger \code{scad_a} / \code{mcp_gamma} make the
+penalty closer to the lasso; smaller values amplify the
+non-convexity (and the bias reduction on strong signals).
 }

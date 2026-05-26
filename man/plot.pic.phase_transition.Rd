@@ -2,22 +2,24 @@
 % Please edit documentation in R/plots.R
 \name{plot.pic.phase_transition}
 \alias{plot.pic.phase_transition}
-\title{Phase-transition plot for a `pic.phase_transition` object.}
+\title{Phase-transition plot for a \code{pic.phase_transition} object.}
 \usage{
 \method{plot}{pic.phase_transition}(x, metric = c("exact_recovery", "tpr", "fdr"), ...)
 }
 \arguments{
-\item{x}{An object returned by [phase_transition()].}
+\item{x}{An object returned by \code{\link[=phase_transition]{phase_transition()}}.}
 
-\item{metric}{One of `"exact_recovery"` (default), `"tpr"`, `"fdr"`.}
+\item{metric}{One of \code{"exact_recovery"} (default), \code{"tpr"}, \code{"fdr"}.}
 
-\item{...}{Additional graphical parameters forwarded to [graphics::plot()].}
+\item{...}{Additional graphical parameters forwarded to \code{\link[graphics:plot]{graphics::plot()}}.}
 }
 \value{
-Invisibly returns `x`.
+Invisibly returns \code{x}.
 }
 \description{
 Plots the chosen recovery metric as a function of the sparsity
-level `s`. Curves are distinguished by line type and point shape
-(grayscale ramp beyond five curves).
+level \code{s}. Curves are distinguished by line type (grayscale ramp
+beyond five curves). When multiple \verb{(n, p)} configurations are
+compared across several penalties, panels are laid out in a grid
+with at most three columns per row.
 }

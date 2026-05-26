@@ -76,6 +76,33 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// lambda_max_cpp
+double lambda_max_cpp(const arma::mat& X, const arma::vec& y, std::string family_name, bool fit_intercept);
+RcppExport SEXP _picreg_lambda_max_cpp(SEXP XSEXP, SEXP ySEXP, SEXP family_nameSEXP, SEXP fit_interceptSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< std::string >::type family_name(family_nameSEXP);
+    Rcpp::traits::input_parameter< bool >::type fit_intercept(fit_interceptSEXP);
+    rcpp_result_gen = Rcpp::wrap(lambda_max_cpp(X, y, family_name, fit_intercept));
+    return rcpp_result_gen;
+END_RCPP
+}
+// lambda_max_cox_cpp
+double lambda_max_cox_cpp(const arma::mat& X, const arma::vec& times, const arma::vec& events);
+RcppExport SEXP _picreg_lambda_max_cox_cpp(SEXP XSEXP, SEXP timesSEXP, SEXP eventsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type times(timesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type events(eventsSEXP);
+    rcpp_result_gen = Rcpp::wrap(lambda_max_cox_cpp(X, times, events));
+    return rcpp_result_gen;
+END_RCPP
+}
 // pdb_mc_gaussian_cpp
 Rcpp::List pdb_mc_gaussian_cpp(const arma::mat& X, double c_n, int n_simu, double alpha);
 RcppExport SEXP _picreg_pdb_mc_gaussian_cpp(SEXP XSEXP, SEXP c_nSEXP, SEXP n_simuSEXP, SEXP alphaSEXP) {
@@ -109,6 +136,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_picreg_cox_null_grad_norms_cpp", (DL_FUNC) &_picreg_cox_null_grad_norms_cpp, 3},
     {"_picreg_fista_cpp", (DL_FUNC) &_picreg_fista_cpp, 17},
     {"_picreg_fista_cox_cpp", (DL_FUNC) &_picreg_fista_cox_cpp, 15},
+    {"_picreg_lambda_max_cpp", (DL_FUNC) &_picreg_lambda_max_cpp, 4},
+    {"_picreg_lambda_max_cox_cpp", (DL_FUNC) &_picreg_lambda_max_cox_cpp, 3},
     {"_picreg_pdb_mc_gaussian_cpp", (DL_FUNC) &_picreg_pdb_mc_gaussian_cpp, 4},
     {"_picreg_pdb_mc_exact_cpp", (DL_FUNC) &_picreg_pdb_mc_exact_cpp, 4},
     {NULL, NULL, 0}

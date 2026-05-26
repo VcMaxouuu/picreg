@@ -1,20 +1,36 @@
 # picreg
 
-**Variable Selection using the Pivotal Information Criterion.**
+**Variable selection using the Pivotal Information Criterion.**
 
-Sparse regression and classification in high dimensions with **automatic
-regularisation parameter selection** via the Pivotal Detection Boundary
-(PDB) method. FISTA optimisation, L1 / SCAD / MCP penalties across six
-families (Gaussian, Binomial, Poisson, Exponential, Gumbel, Cox).
+Sparse regression and classification via the Pivotal Information
+Criterion (PIC), an alternative to BIC, cross-validation, and
+Lasso-based tuning. The regularisation parameter is selected from a
+pivotal null-distribution statistic, eliminating the need for
+cross-validation and yielding sharper support recovery.
 
-The PDB selector chooses `lambda` as a quantile of a pivotal
-null-distribution statistic — no cross-validation loop required.
+Provides FISTA optimisation for the L1, SCAD, and MCP penalties across
+six response distributions:
+
+| Family      | `family =`      | Response       |
+| ----------- | --------------- | -------------- |
+| Gaussian    | `"gaussian"`    | continuous     |
+| Binomial    | `"binomial"`    | 0/1 binary     |
+| Poisson     | `"poisson"`     | count          |
+| Exponential | `"exponential"` | positive cont. |
+| Gumbel      | `"gumbel"`      | continuous     |
+| Cox PH      | `"cox"`         | (time, event)  |
+
+Under standard sparsity assumptions, the selector achieves a phase
+transition for exact support recovery, analogous to results in
+compressed sensing.
 
 ## Installation
 
+The development version can be installed from GitHub:
+
 ```r
-# from a local clone
-install.packages("picreg", repos = NULL, type = "source")
+# install.packages("remotes")
+remotes::install_github("VcMaxouuu/picreg")
 ```
 
 ## Quick start
@@ -22,46 +38,27 @@ install.packages("picreg", repos = NULL, type = "source")
 ```r
 library(picreg)
 
-set.seed(1)
-n <- 100; p <- 100; s <- 5
-X <- matrix(rnorm(n * p), n, p)
-beta <- numeric(p); beta[sample.int(p, s)] <- 3
-y <- as.numeric(X %*% beta + rnorm(n))
+data(QuickStartExample)
+fit <- pic(QuickStartExample$X, QuickStartExample$y)
 
-fit <- pic(X, y, family = "gaussian", penalty = "scad")
-coef(fit)[which(coef(fit) != 0)]
-fit$lambda        # PDB-selected lambda
-fit$selected      # indices of non-zero coefficients
+fit$selected   # names of selected variables
+fit$lambda     # PDB-selected lambda
+coef(fit)      # coefficients on the original scale
 ```
 
-## Supported families and penalties
+## Documentation
 
-| Family        | `family =`       | Response       |
-| ------------- | ---------------- | -------------- |
-| Gaussian      | `"gaussian"`     | continuous     |
-| Binomial      | `"binomial"`     | 0/1 binary     |
-| Poisson       | `"poisson"`      | count          |
-| Exponential   | `"exponential"`  | positive cont. |
-| Gumbel        | `"gumbel"`       | continuous     |
-| Cox PH        | `"cox"`          | (time, event)  |
+The full walk-through - fitting across all six families, predicting,
+visualising, choosing penalties, and running diagnostics
+(`phase_transition()`, `pdb_asymptotic()`) - lives in the package
+vignette:
 
-| Penalty | `penalty =`  | Tuning parameter            |
-| ------- | ------------ | --------------------------- |
-| Lasso   | `"lasso"`    | —                           |
-| SCAD    | `"scad"`     | `scad_a = 3.7` (default)    |
-| MCP     | `"mcp"`      | `mcp_gamma = 3.0` (default) |
-
-## Diagnostics
-
-Two empirical-check tools are exported alongside the core fit:
-
-- `phase_transition()` — support-recovery probability as a function of
-  the sparsity level `s`.
-- `pdb_asymptotic()` — convergence of the family-exact null distribution
-  to the Gaussian approximation as `n` grows.
-
-See `vignette("picr-diagnostics", package = "picreg")`.
+```r
+vignette("vignette", package = "picreg")
+```
 
 ## Reference
 
-See <doi:10.48550/arXiv.2603.04172>.
+Sardy, van Cutsem, and van de Geer. *The Pivotal Information
+Criterion.* <https://arxiv.org/abs/2603.04172>
+(<doi:10.48550/arXiv.2603.04172>)

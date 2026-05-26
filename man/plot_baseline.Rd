@@ -7,13 +7,13 @@
 plot_baseline(model)
 }
 \arguments{
-\item{model}{A fitted `pic.cox` object.}
+\item{model}{A fitted \code{pic.cox} object.}
 }
 \value{
-Invisibly returns `NULL`.
+Invisibly returns \code{NULL}.
 }
 \description{
-Two-panel step plot for a fitted `pic.cox` model: the Breslow
+Two-panel step plot for a fitted \code{pic.cox} model: the Breslow
 baseline cumulative hazard \eqn{H_0(t)} on top and the baseline
 survival \eqn{S_0(t) = \exp(-H_0(t))} below.
 }

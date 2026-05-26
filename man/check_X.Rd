@@ -9,18 +9,22 @@ check_X(X, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
 \arguments{
 \item{X}{A numeric matrix or coercible (data.frame).}
 
-\item{standardize_X}{Logical; standardise columns of `X`.}
+\item{standardize_X}{Logical; standardise columns of \code{X}.}
 
 \item{X_mean}{Optional pre-computed column means.}
 
 \item{X_std}{Optional pre-computed column standard deviations.}
 }
 \value{
-A list with components `X`, `X_mean`, `X_std`.
+A list with components \code{X}, \code{X_mean}, \code{X_std}, \code{feature_names}
+(the column names of \code{X} if any, otherwise \code{NULL}).
 }
 \description{
-Standardises columns to zero mean and unit variance (population sd; `n` divisor)
-when `standardize_X` is `TRUE`. When `X_mean` and `X_std` are supplied they
+Standardises columns to zero mean and unit variance (population sd; \code{n} divisor)
+when \code{standardize_X} is \code{TRUE}. When \code{X_mean} and \code{X_std} are supplied they
 are reapplied without recomputing — used at prediction time on new data.
+Column names of \code{X} (or column names of the source data frame) are captured
+and returned as \code{feature_names}; they are propagated through \code{pic()} to
+annotate \code{fit$selected}, \code{coef()}, and the coefficient plot.
 }
 \keyword{internal}

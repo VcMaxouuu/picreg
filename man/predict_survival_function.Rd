@@ -4,16 +4,16 @@
 \alias{predict_survival_function}
 \title{Survival curves for new data from a fitted Cox pic model.}
 \usage{
-predict_survival_function(object, newdata)
+predict_survival_function(object, newx)
 }
 \arguments{
-\item{object}{A fitted `pic.cox` model.}
+\item{object}{A fitted \code{pic.cox} model.}
 
-\item{newdata}{New design matrix (rows = subjects).}
+\item{newx}{New design matrix (rows = subjects).}
 }
 \value{
-A list with `time` (length `K`) and `survival` (matrix `K x m`,
-  one column per subject).
+A list with \code{time} (length \code{K}) and \code{survival} (matrix \verb{K x m},
+one column per subject).
 }
 \description{
 Survival curves for new data from a fitted Cox pic model.

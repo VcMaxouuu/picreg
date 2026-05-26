@@ -11,10 +11,10 @@ check_y(y, n_samples = NULL, y_kind = "continuous")
 
 \item{n_samples}{Expected number of observations.}
 
-\item{y_kind}{One of `"continuous"`, `"positive"`, `"binary"`, `"survival"`.}
+\item{y_kind}{One of \code{"continuous"}, \code{"positive"}, \code{"binary"}, \code{"survival"}.}
 }
 \value{
-Validated `y` (possibly coerced to matrix for survival).
+Validated \code{y} (possibly coerced to matrix for survival).
 }
 \description{
 Validate response according to its distributional kind.

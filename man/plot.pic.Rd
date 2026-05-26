@@ -4,20 +4,20 @@
 \alias{plot.pic}
 \title{Horizontal lollipop plot of the non-zero coefficients of a pic fit.}
 \usage{
-\method{plot}{pic}(x, standardized = FALSE, max_features = NULL, ...)
+\method{plot}{pic}(x, standardized = TRUE, max_features = NULL, ...)
 }
 \arguments{
-\item{x}{A fitted `pic` object.}
+\item{x}{A fitted \code{pic} object.}
 
-\item{standardized}{Logical; if `TRUE`, plot the standardised
-coefficients used internally during fitting. Default `FALSE`
-(coefficients on the original scale of `X`).}
+\item{standardized}{Logical; if \code{TRUE}, plot the standardised
+coefficients used internally during fitting. If \code{FALSE}, use the
+coefficients on the original scale of \code{X}. Default \code{TRUE}.}
 
 \item{max_features}{Optional cap on the number of features displayed
 (the strongest are kept).}
 
 \item{...}{Additional graphical parameters forwarded to
-[graphics::plot()] for the empty frame.}
+\code{\link[graphics:plot]{graphics::plot()}} for the empty frame.}
 }
 \value{
 Invisibly returns the plotted (named) coefficient vector.
@@ -25,6 +25,5 @@ Invisibly returns the plotted (named) coefficient vector.
 \description{
 One row per selected variable, sorted by descending absolute coefficient
 value (largest at the top). Each variable is drawn as a horizontal
-segment from zero to its fitted value. Sign is encoded by point shape
-(filled circle = positive, hollow circle = negative).
+segment from zero to its fitted value.
 }

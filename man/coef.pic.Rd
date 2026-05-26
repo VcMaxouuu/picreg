@@ -7,26 +7,34 @@
 \method{coef}{pic}(object, standardized = FALSE, ...)
 }
 \arguments{
-\item{object}{A fitted `pic` object.}
+\item{object}{A fitted \code{pic} object.}
 
-\item{standardized}{Logical; if `TRUE`, return the coefficients on the
-standardised scale used internally during fitting. Default `FALSE`
-(return coefficients on the original scale of `X`).}
+\item{standardized}{Logical; if \code{TRUE}, return the coefficients on the
+standardised scale used internally during fitting. Default \code{FALSE}
+(return coefficients on the original scale of \code{X}).}
 
-\item{...}{Ignored.}
+\item{...}{Unused; present for S3 method consistency.}
+}
+\value{
+A \code{data.frame} with columns \code{variable} (character) and
+\code{coefficient} (numeric), of length \code{p + 1} (intercept + features).
 }
 \description{
-Returns a named numeric vector `(intercept, b1, ..., bp)`. When no
-intercept was fitted the first entry is `0`.
+Returns a two-column data frame with the variable name in the first
+column (\code{variable}) and the fitted coefficient in the second
+(\code{coefficient}). The first row is always the intercept, labelled
+\code{"(Intercept)"}; when no intercept was fitted its value is \code{0}.
+Variable names are taken from the column names of \code{X} if any were
+supplied (matrix \code{colnames(X)} or data-frame column names), and
+otherwise default to \verb{V1, ..., Vp}.
 }
 \details{
 Internally the model is fitted on a standardised design matrix, so the
 raw coefficients live on the standardised scale. By default this method
-returns the **original-scale** coefficients — the values to plug into
-the un-standardised `X` for prediction. Pass `standardized = TRUE` to
-get the raw fit values instead.
-
-Conversion: with mean `m` and standard deviation `s` per column,
-`beta_orig = beta / s` and
-`intercept_orig = intercept - sum(m * beta_orig)`.
+rescales them back to the \strong{original scale} of \code{X} — the values to
+plug into the un-standardised design for prediction — via
+\deqn{beta\_orig = beta / s \quad intercept\_orig = intercept - sum(m * beta\_orig)}
+where \code{m} and \code{s} are the column mean and standard deviation. Pass
+\code{standardized = TRUE} to skip the rescaling and return the raw fit
+values (identical to \code{fit$beta}).
 }

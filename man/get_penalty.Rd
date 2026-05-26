@@ -14,10 +14,10 @@ get_penalty(penalty, scad_a = 3.7, mcp_gamma = 3)
 \item{mcp_gamma}{MCP concavity parameter (default 3.0).}
 }
 \value{
-A `pic.penalty` descriptor.
+A \code{pic.penalty} descriptor.
 }
 \description{
-Accepts one of `"lasso"`, `"scad"`, `"mcp"` (case-insensitive). Anything
+Accepts one of \code{"lasso"}, \code{"scad"}, \code{"mcp"} (case-insensitive). Anything
 else raises an error: the build does not support user-defined penalties.
 }
 \keyword{internal}

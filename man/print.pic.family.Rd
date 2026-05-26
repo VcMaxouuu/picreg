@@ -6,6 +6,14 @@
 \usage{
 \method{print}{pic.family}(x, ...)
 }
+\arguments{
+\item{x}{A \code{pic.family} object.}
+
+\item{...}{Ignored.}
+}
+\value{
+Invisibly returns \code{x}.
+}
 \description{
 Three-line summary showing the family name and its (g, phi) link pair.
 }

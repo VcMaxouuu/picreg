@@ -22,19 +22,6 @@ static double safe_exp_scalar(double x) {
   return std::exp(std::clamp(x, -50.0, 50.0));
 }
 
-// Approximation used to estimate sigma from residuals.
-// This is close to the method-of-moments estimate:
-//
-//   Var(Gumbel) = pi^2 sigma^2 / 6
-//   sigma       = sqrt(6) / pi * sd(residuals)
-//
-// It is not exactly the same as scipy.stats.gumbel_r.fit(..., floc=0).
-static double estimate_sigma(const arma::vec& y, const arma::vec& lp) {
-  arma::vec residuals = y - lp;
-  double sigma = std::sqrt(6.0) / arma::datum::pi * arma::stddev(residuals);
-  return sigma;
-}
-
 static double estimate_sigma_MLE(const arma::vec& y, const arma::vec& lp) {
   arma::vec r = y - lp;
   double sigma = std::sqrt(6.0) / arma::datum::pi * arma::stddev(r);

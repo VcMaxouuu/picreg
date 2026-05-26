@@ -4,7 +4,7 @@
 \alias{pic_methods}
 \title{S3 methods for fitted pic objects.}
 \description{
-The fitted object has class `c("pic.<family>", "pic")` —
- methods dispatch on the second class for shared behaviour
- and on the first class for family-specific overrides.
+The fitted object has class \code{c("pic.<family>", "pic")} —
+methods dispatch on the second class for shared behaviour
+and on the first class for family-specific overrides.
 }

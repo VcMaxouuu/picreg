@@ -7,12 +7,12 @@
 \method{print}{pic.pdb_asymptotic}(x, ...)
 }
 \arguments{
-\item{x}{A `pic.pdb_asymptotic` object.}
+\item{x}{A \code{pic.pdb_asymptotic} object.}
 
-\item{...}{Ignored.}
+\item{...}{Unused; present for S3 method consistency.}
 }
 \value{
-Invisibly returns `x`.
+Invisibly returns \code{x}.
 }
 \description{
 Print PDB asymptotic diagnostic.

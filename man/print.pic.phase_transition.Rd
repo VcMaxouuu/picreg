@@ -7,12 +7,12 @@
 \method{print}{pic.phase_transition}(x, ...)
 }
 \arguments{
-\item{x}{A `pic.phase_transition` object.}
+\item{x}{A \code{pic.phase_transition} object.}
 
-\item{...}{Ignored.}
+\item{...}{Unused; present for S3 method consistency.}
 }
 \value{
-Invisibly returns `x`.
+Invisibly returns \code{x}.
 }
 \description{
 Print phase-transition analysis.

@@ -2,17 +2,17 @@
 % Please edit documentation in R/survival.R
 \name{cox_partial_log_likelihood}
 \alias{cox_partial_log_likelihood}
-\title{Breslow partial log-likelihood (negative, normalised by `n`).}
+\title{Breslow partial log-likelihood (negative, normalised by \code{n}).}
 \usage{
 cox_partial_log_likelihood(times, events, predictions)
 }
 \arguments{
-\item{times}{Survival times (length `n`).}
+\item{times}{Survival times (length \code{n}).}
 
-\item{events}{Event indicators (0 or 1; length `n`).}
+\item{events}{Event indicators (0 or 1; length \code{n}).}
 
 \item{predictions}{Risk scores; higher = higher risk = shorter survival.}
 }
 \description{
-Breslow partial log-likelihood (negative, normalised by `n`).
+Breslow partial log-likelihood (negative, normalised by \code{n}).
 }

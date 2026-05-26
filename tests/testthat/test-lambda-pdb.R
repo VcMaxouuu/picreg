@@ -26,7 +26,7 @@ test_that("lambda_pdb warns when X is not standardised", {
   )
 })
 
-test_that("pdb_summary() returns the lambda and Monte Carlo statistics", {
+test_that("pdb_summary() prints the lambda and Monte Carlo distribution", {
   set.seed(33)
   n <- 60; p <- 20
   X <- matrix(rnorm(n * p), n, p)
@@ -34,9 +34,14 @@ test_that("pdb_summary() returns the lambda and Monte Carlo statistics", {
 
   fit <- pic(X, y, family = "gaussian", lambda_n_simu = 200L,
              lambda_method = "mc_exact")
-  s <- pdb_summary(fit)
 
-  expect_equal(s$method, "mc_exact")
-  expect_equal(s$lambda, fit$lambda)
-  expect_true("q95" %in% names(s))
+  txt <- capture.output(invisible(pdb_summary(fit)))
+  expect_true(any(grepl("mc_exact", txt)))
+  expect_true(any(grepl("lambda_hat", txt)))
+  expect_true(any(grepl("Null distribution", txt)))
+
+  # The underlying lambda_pdb object carries the structured payload.
+  expect_s3_class(fit$lambda_pdb, "pic.lambda_pdb")
+  expect_equal(fit$lambda_pdb$value, fit$lambda)
+  expect_equal(fit$lambda_pdb$method, "mc_exact")
 })

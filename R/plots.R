@@ -1,23 +1,14 @@
-#' Plotting utilities for pic fits and diagnostics.
-#'
-#' All pic plots share a common minimalist aesthetic:
-#'
-#' * grayscale by default, with a single dark-navy accent reserved for the
-#'   value the user is meant to focus on (e.g. \eqn{\hat\lambda_{PDB}});
-#' * an L-shaped axis frame (no full box), short outward tick marks,
-#'   sans-serif typography and tight margins;
-#' * curves distinguished by line type and point shape — not colour —
-#'   whenever multiple series are shown on the same panel.
+#' Plot methods for pic fits and diagnostics.
 #'
 #' Entry points:
 #'
-#' * `plot(fit)` — lollipop plot of the non-zero coefficients.
-#' * `plot(fit$lambda_pdb)` — histogram of the PDB null distribution
+#' * `plot(fit)` - lollipop plot of the non-zero coefficients.
+#' * `plot(fit$lambda_pdb)` - histogram of the PDB null distribution
 #'   with a vertical line at the selected \eqn{\hat\lambda}.
-#' * [plot_baseline()] — Cox-only: baseline cumulative hazard and
+#' * [plot_baseline()] - Cox-only: baseline cumulative hazard and
 #'   baseline survival, two panels.
-#' * `plot(phase_transition(...))` — recovery curves.
-#' * `plot(pdb_asymptotic(...))` — null-distribution convergence panels.
+#' * `plot(phase_transition(...))` - recovery curves.
+#' * `plot(pdb_asymptotic(...))` - null-distribution convergence panels.
 #'
 #' @name pic_plots
 NULL
@@ -28,13 +19,13 @@ NULL
 # uniform. The accent colour is reserved for *one* element per plot: the
 # value the user should look at first.
 
-.pic_accent <- "#08306B"   # dark navy — sparing accent
+.pic_accent <- "#08306B"   # dark navy - sparing accent
 .pic_grey   <- "#5A5A5A"   # neutral grey for secondary elements
 .pic_light  <- "#BFBFBF"   # subtle grey for fills / minor grid
 
 # Set common plotting parameters. Returns the previous par() so callers
 # can restore with on.exit().
-.pic_par <- function(mar = c(4, 4, 2.4, 1), mfrow = NULL) {
+.pic_par <- function(mar = c(4, 4, 2.4, 1), mfrow = NULL, oma = NULL) {
   old <- graphics::par(no.readonly = TRUE)
   args <- list(
     mar       = mar,
@@ -47,6 +38,7 @@ NULL
     bty       = "n"
   )
   if (!is.null(mfrow)) args$mfrow <- mfrow
+  if (!is.null(oma))   args$oma   <- oma
   do.call(graphics::par, args)
   old
 }
@@ -58,7 +50,7 @@ NULL
   graphics::box(bty = "l", lwd = 0.8)
 }
 
-# Curve style for K series on the same panel. ≤ 5: vary line type and
+# Curve style for K series on the same panel. <= 5: vary line type and
 # point shape with a single (black) ink. > 5: switch to a grayscale ramp.
 .pic_curve_style <- function(K) {
   if (K <= 5L) {
@@ -83,22 +75,23 @@ NULL
 #'
 #' One row per selected variable, sorted by descending absolute coefficient
 #' value (largest at the top). Each variable is drawn as a horizontal
-#' segment from zero to its fitted value. Sign is encoded by point shape
-#' (filled circle = positive, hollow circle = negative).
+#' segment from zero to its fitted value.
 #'
 #' @param x A fitted `pic` object.
 #' @param standardized Logical; if `TRUE`, plot the standardised
-#'   coefficients used internally during fitting. Default `FALSE`
-#'   (coefficients on the original scale of `X`).
+#'   coefficients used internally during fitting. If `FALSE`, use the 
+#'   coefficients on the original scale of `X`. Default `TRUE`.
 #' @param max_features Optional cap on the number of features displayed
 #'   (the strongest are kept).
 #' @param ... Additional graphical parameters forwarded to
 #'   [graphics::plot()] for the empty frame.
 #' @return Invisibly returns the plotted (named) coefficient vector.
 #' @export
-plot.pic <- function(x, standardized = FALSE, max_features = NULL, ...) {
+plot.pic <- function(x, standardized = TRUE, max_features = NULL, ...) {
   co <- coef.pic(x, standardized = standardized)
-  beta <- co[-1L]
+  # Drop the intercept row; build a named vector for downstream plotting.
+  feat <- co[co$variable != "(Intercept)", , drop = FALSE]
+  beta <- setNames(feat$coefficient, feat$variable)
   p_total <- length(beta)
   nz <- which(beta != 0)
   if (length(nz) == 0L) {
@@ -112,7 +105,7 @@ plot.pic <- function(x, standardized = FALSE, max_features = NULL, ...) {
   }
 
   K <- length(vals)
-  pch_vec <- ifelse(vals >= 0, 19L, 1L)   # filled / hollow distinguishes sign
+  pch_vec <- rep(19L, K)
   y_pos   <- rev(seq_len(K))
 
   left_mar <- max(4, 0.55 * max(nchar(names(vals))))
@@ -158,7 +151,7 @@ plot.pic <- function(x, standardized = FALSE, max_features = NULL, ...) {
 #'
 #' @param x A `pic.lambda_pdb` object (typically `fit$lambda_pdb`).
 #' @param breaks Number of histogram bins (default 40).
-#' @param ... Ignored.
+#' @param ... Unused; present for S3 method consistency.
 #' @return Invisibly returns `x`.
 #' @export
 plot.pic.lambda_pdb <- function(x, breaks = 40L, ...) {
@@ -241,13 +234,120 @@ plot_baseline <- function(model) {
 }
 
 
+# ---- Cox subject-specific survival curves -------------------------------
+
+#' Plot subject-specific Cox survival curves.
+#'
+#' Step-line visualisation of the output of
+#' [predict_survival_function()] or [feature_effects_on_survival()]:
+#' one survival curve per subject (or per feature value) on a common
+#' time grid. To keep curves distinguishable, each curve is drawn with
+#' its own line type and a sparse set of marker glyphs is overlaid at
+#' regular time points.
+#'
+#' @param sf A list as returned by [predict_survival_function()] or
+#'   [feature_effects_on_survival()], with components `time` (length
+#'   `K`) and `survival` (matrix `K x m`, one column per curve).
+#' @param subjects Optional integer vector selecting which columns of
+#'   `sf$survival` to plot. Defaults to all curves, capped to the
+#'   first `max_subjects` for legibility.
+#' @param max_subjects Maximum number of curves drawn when `subjects`
+#'   is `NULL`. Default 10.
+#' @param labels Optional character vector of labels used in the
+#'   legend, one per plotted curve. Defaults to the column names of
+#'   `sf$survival` when set, otherwise `"subject 1"`, `"subject 2"`,
+#'   etc.
+#' @param n_marks Number of marker glyphs overlaid on each curve to
+#'   help distinguish them. Default `8`. Set to `0` to disable.
+#' @param main Plot title.
+#' @param ... Additional graphical parameters forwarded to
+#'   [graphics::matplot()].
+#'
+#' @return Invisibly returns `NULL`.
+#' @export
+plot_survival_curves <- function(sf,
+                                 subjects     = NULL,
+                                 max_subjects = 10L,
+                                 labels       = NULL,
+                                 n_marks      = 8L,
+                                 main         = "Individual survival curves",
+                                 ...) {
+  if (!is.list(sf) || is.null(sf$time) || is.null(sf$survival))
+    stop("`sf` must be a list with components `time` and `survival`, ",
+         "typically the output of predict_survival_function().")
+
+  S <- as.matrix(sf$survival)
+  m <- ncol(S)
+  if (is.null(subjects)) subjects <- seq_len(min(m, max_subjects))
+  if (any(subjects < 1L) || any(subjects > m))
+    stop("`subjects` must index valid columns of sf$survival (1..", m, ").")
+
+  S <- S[, subjects, drop = FALSE]
+  k <- ncol(S)
+
+  # Distinct line types + filled marker shapes, both cycled if k exceeds
+  # the pool. Grayscale ramp kept consistent with the rest of the package.
+  lty_pool <- c(1L, 2L, 3L, 4L, 5L, 6L)
+  pch_pool <- c(16L, 17L, 15L, 18L, 8L, 4L, 3L, 1L, 2L, 5L)
+  lty_vec  <- lty_pool[((seq_len(k) - 1L) %% length(lty_pool)) + 1L]
+  pch_vec  <- pch_pool[((seq_len(k) - 1L) %% length(pch_pool)) + 1L]
+  cols     <- if (k == 1L) "black"
+              else grDevices::gray(seq(0, 0.55, length.out = k))
+
+  old <- .pic_par()
+  on.exit(graphics::par(old))
+
+  graphics::matplot(
+    sf$time, S,
+    type = "s", lty = lty_vec, lwd = 1.6, col = cols,
+    ylim = c(0, 1),
+    xlab = "time", ylab = "survival",
+    main = main, axes = FALSE,
+    ...
+  )
+  .pic_axes()
+
+  # Sparse markers at common time positions, one shape per curve. They
+  # disambiguate curves even when colours print poorly (BW, low contrast).
+  if (isTRUE(n_marks > 0L) && length(sf$time) >= 2L) {
+    n_marks <- min(as.integer(n_marks), length(sf$time))
+    mark_idx <- unique(round(seq(1, length(sf$time), length.out = n_marks)))
+    t_marks  <- sf$time[mark_idx]
+    for (j in seq_len(k)) {
+      graphics::points(t_marks, S[mark_idx, j],
+                       pch = pch_vec[j], col = cols[j],
+                       bg = "white", cex = 0.95)
+    }
+  }
+
+  if (is.null(labels)) {
+    nm <- colnames(sf$survival)
+    labels <- if (!is.null(nm)) nm[subjects]
+              else paste("subject", subjects)
+  }
+  graphics::legend(
+    "topright",
+    legend = labels,
+    col    = cols,
+    lty    = lty_vec, lwd = 1.6,
+    pch    = if (isTRUE(n_marks > 0L)) pch_vec else NA,
+    bty    = "n", cex = 0.85,
+    seg.len = 2.4
+  )
+
+  invisible(NULL)
+}
+
+
 # ---- phase transition -----------------------------------------------------
 
 #' Phase-transition plot for a `pic.phase_transition` object.
 #'
 #' Plots the chosen recovery metric as a function of the sparsity
-#' level `s`. Curves are distinguished by line type and point shape
-#' (grayscale ramp beyond five curves).
+#' level `s`. Curves are distinguished by line type (grayscale ramp
+#' beyond five curves). When multiple `(n, p)` configurations are
+#' compared across several penalties, panels are laid out in a grid
+#' with at most three columns per row.
 #'
 #' @param x An object returned by [phase_transition()].
 #' @param metric One of `"exact_recovery"` (default), `"tpr"`, `"fdr"`.
@@ -272,10 +372,12 @@ plot.pic.phase_transition <- function(
   penalties <- unique(dat$penalty)
   configs   <- unique(dat[c("n", "p")])
 
-  old <- if (length(penalties) > 1L && nrow(configs) > 1L) {
-    nr <- ceiling(sqrt(nrow(configs)))
-    nc <- ceiling(nrow(configs) / nr)
-    .pic_par(mfrow = c(nr, nc))
+  grid_mode <- length(penalties) > 1L && nrow(configs) > 1L
+  old <- if (grid_mode) {
+    n_panels <- nrow(configs)
+    nc <- min(3L, n_panels)
+    nr <- ceiling(n_panels / nc)
+    .pic_par(mfrow = c(nr, nc), oma = c(0, 0, 2.4, 0))
   } else {
     .pic_par()
   }
@@ -304,13 +406,10 @@ plot.pic.phase_transition <- function(
       d <- d[order(d$s), ]
       graphics::lines(
         d$s, d[[metric]],
-        type = "b",
-        pch  = sty$pch[i],
+        type = "l",
         col  = sty$col[i],
         lty  = sty$lty[i],
-        lwd  = 1.4,
-        cex  = 0.9,
-        bg   = "white"
+        lwd  = 1.4
       )
     }
 
@@ -319,7 +418,6 @@ plot.pic.phase_transition <- function(
       legend = curves,
       col    = sty$col,
       lty    = sty$lty,
-      pch    = sty$pch,
       lwd    = 1.4,
       bty    = "n",
       cex    = 0.82,
@@ -330,20 +428,24 @@ plot.pic.phase_transition <- function(
   if (length(penalties) == 1L) {
     dat$curve <- sprintf("n=%d, p=%d", dat$n, dat$p)
     plot_one(dat,
-             sprintf("Phase transition — %s, %s", cfg$type, penalties[1]),
+             sprintf("Phase transition - %s, %s", cfg$type, penalties[1]),
              "curve")
   } else if (nrow(configs) == 1L) {
     plot_one(dat,
-             sprintf("Phase transition — %s, n=%d, p=%d",
+             sprintf("Phase transition - %s, n=%d, p=%d",
                      cfg$type, configs$n[1], configs$p[1]),
              "penalty")
   } else {
     for (i in seq_len(nrow(configs))) {
       subdat <- dat[dat$n == configs$n[i] & dat$p == configs$p[i], ]
       plot_one(subdat,
-               sprintf("%s — n=%d, p=%d", cfg$type, configs$n[i], configs$p[i]),
+               sprintf("n=%d, p=%d", configs$n[i], configs$p[i]),
                "penalty")
     }
+    graphics::mtext(
+      sprintf("Phase transition - %s", cfg$type),
+      side = 3, line = 0.6, outer = TRUE, cex = 1.05, font = 2
+    )
   }
 
   invisible(x)
@@ -352,21 +454,20 @@ plot.pic.phase_transition <- function(
 
 # ---- PDB asymptotic -------------------------------------------------------
 
-#' Diagnostic plot of the PDB asymptotic behaviour.
+#' Plot of the PDB asymptotic behaviour.
 #'
 #' Multi-panel histogram comparison of the simulated null gradient-norm
 #' statistic under the `"mc_exact"` (light grey fill) and `"mc_gaussian"`
 #' (dashed outline) selectors, one panel per `n` in `n_grid`. Two
 #' vertical lines are added per panel:
-#'
-#' * \eqn{\hat\lambda_{PDB}} — solid navy, the empirical (1 - alpha)
+#' * \eqn{\hat\lambda^{\rm PDB}_\alpha} - solid navy, the empirical (1 - alpha)
 #'   quantile of `"mc_exact"` (what pic would actually use).
-#' * \eqn{\hat\lambda_{analytical}} — dashed black, the Bonferroni
+#' * \eqn{\hat\lambda_{analytical}} - dashed black, the Bonferroni
 #'   closed-form bound.
 #'
 #' @param x An object returned by [pdb_asymptotic()].
 #' @param breaks Number of histogram bins (default 40).
-#' @param ... Ignored.
+#' @param ... Unused; present for S3 method consistency.
 #' @return Invisibly returns `x`.
 #' @export
 plot.pic.pdb_asymptotic <- function(x, breaks = 40L, ...) {
@@ -401,7 +502,7 @@ plot.pic.pdb_asymptotic <- function(x, breaks = 40L, ...) {
       xlab = "null gradient-norm statistic",
       ylab = "density"
     )
-    # mc_gaussian overlay: outlined steps, no fill — visually subordinate.
+    # mc_gaussian overlay: outlined steps, no fill - visually subordinate.
     graphics::lines(
       stats::stepfun(h_g$breaks, c(0, h_g$density, 0)),
       do.points = FALSE, lty = 2, lwd = 1.1, col = "black"

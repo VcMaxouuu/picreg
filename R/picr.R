@@ -1,60 +1,172 @@
-#' Fit a sparse GLM with PDB-selected lambda.
+#' Sparse regression via pivotal loss and PDB lambda selection
 #'
-#' Top-level entry point. Dispatches on the `family` argument,
-#' runs PDB to choose \eqn{\lambda}, and fits a
-#' warm-started 4-step regularisation path with FISTA.
+#' Fits sparse regression, classification, and survival models using a
+#' family-specific pivotal loss combined with a sparsity-inducing
+#' penalty. Supported families are Gaussian, binomial, Poisson,
+#' exponential, Gumbel, and Cox proportional hazards.
 #'
+#' Minimises the objective function
+#' \deqn{\hat\beta = \arg\min_\beta\; L(\beta)
+#'        \;+\; \lambda_\alpha^{\rm PDB}\,\mathrm{pen}(\beta)
+#'        \quad\text{with}\quad
+#'        L(\beta) = \phi\!\left(\ell_n\!\left(g(\beta)\right)\right),}
+#' where the regularisation parameter is selected automatically using
+#' the Pivotal Detection Boundary (PDB) principle implemented in
+#' [lambda_pdb()]. The PDB choice is not just a substitute for
+#' cross-validation: by calibrating \eqn{\lambda} against a pivotal
+#' null-distribution statistic rather than out-of-sample prediction
+#' error, it yields sharper support recovery - fewer false positives
+#' on noise variables and more accurate identification of the true
+#' non-zero coefficients. Here, \eqn{\phi} and \eqn{g} are
+#' family-specific transformations chosen so that the gradient at the
+#' null has a distribution free of the nuisance parameter, which is
+#' precisely what makes the use of \eqn{\lambda^{\rm PDB}_\alpha}
+#' valid. Optimisation is performed using a warm-started FISTA
+#' regularisation path.
 #'
-#' @param X Numeric design matrix of shape `(n, p)`.
-#' @param y Response. For `family = "cox"`, a 2-column matrix `(time, event)`.
-#' @param family A character name in `c("gaussian","binomial","poisson",
-#'   "exponential","gumbel","cox")` (default `"gaussian"`).
-#' @param penalty Penalty name: one of `"lasso"`, `"scad"`,
-#'   `"mcp"` (lowercase). Default `"lasso"`.
+#' ## Details on family-specific losses
+#'
+#' \describe{
+#'   \item{`"gaussian"`}{
+#'     Uses \eqn{\phi(\cdot) = \sqrt{\cdot}} and \eqn{g(\cdot) = \mathrm{Id}},
+#'     resulting in the square-root lasso objective
+#'     \deqn{L(\beta) = \frac{\|y - X\beta\|_2}{\sqrt{n}}.}
+#'   }
+#'   \item{`"binomial"`}{
+#'     Uses a variance-stabilised transformation of the Bernoulli
+#'     likelihood. With \eqn{\phi(\cdot) = \mathrm{Id}} and the logistic
+#'     link \eqn{g(\eta_i) = (1 + e^{-\eta_i})^{-1}}, the loss is
+#'     \deqn{L(\beta) = \frac{1}{n}\sum_{i=1}^n
+#'       \left(2 y_i \sqrt{\frac{1 - g(\eta_i)}{g(\eta_i)}}
+#'             + 2 (1 - y_i) \sqrt{\frac{g(\eta_i)}{1 - g(\eta_i)}}\right).}
+#'     The classical logistic link is preserved; only the loss itself
+#'     is modified to obtain a pivotal gradient.
+#'   }
+#'   \item{`"poisson"`}{
+#'     As for `"binomial"`, uses a variance-stabilised version of the
+#'     Poisson likelihood. With \eqn{\phi(\cdot) = \mathrm{Id}} and
+#'     \eqn{g(\eta_i) = e^{\eta_i}}, the loss is
+#'     \deqn{L(\beta) = \frac{1}{n}\sum_{i=1}^n
+#'       \left(\frac{2 y_i}{\sqrt{g(\eta_i)}}
+#'             + 2 \sqrt{g(\eta_i)}\right).}
+#'     The standard log link is kept unchanged; the pivotality property
+#'     is obtained through the modified loss rather than through the
+#'     link function.
+#'   }
+#'   \item{`"exponential"`}{
+#'     Uses the standard Exponential negative log-likelihood together
+#'     with the classical log link \eqn{g(\eta_i) = e^{\eta_i}}. The
+#'     loss is
+#'     \deqn{L(\beta) = \frac{1}{n}\sum_{i=1}^n
+#'       \left(\log\!\left(g(\eta_i)\right)
+#'             + \frac{y_i}{g(\eta_i)}\right).}
+#'     No variance-stabilising modification is required.
+#'   }
+#'   \item{`"gumbel"`}{
+#'     Uses an exponentially stabilised Gumbel negative log-likelihood.
+#'     With \eqn{\phi(\cdot) = \exp(\cdot)} and identity link
+#'     \eqn{g(\eta_i) = \eta_i}, the loss is based on the Gumbel
+#'     log-likelihood
+#'     \deqn{\ell(\beta, \sigma) = \log(\sigma)
+#'       + \frac{1}{n}\sum_{i=1}^n \left(z_i + e^{-z_i}\right),
+#'       \qquad z_i = \frac{y_i - \eta_i}{\sigma}.}
+#'     The optimisation objective becomes
+#'     \deqn{L(\beta, \sigma) = \exp\!\left(\ell(\beta, \sigma)\right).}
+#'     The scale parameter \eqn{\sigma} is re-estimated internally by
+#'     profile maximum likelihood at each optimisation step.
+#'   }
+#'   \item{`"cox"`}{
+#'     Uses a square-root-transformed Cox partial log-likelihood. With
+#'     \eqn{\phi(\cdot) = \sqrt{\cdot}} and identity link
+#'     \eqn{g(\eta_i) = \eta_i}, the underlying partial likelihood is
+#'     \deqn{\ell(\beta) = -\frac{1}{n}\left[
+#'       \sum_{i=1}^n \delta_i \eta_i
+#'       - \sum_{i=1}^n \delta_i
+#'         \log\!\left(\sum_{j \in R_i} e^{\eta_j}\right)\right],}
+#'     where \eqn{\delta_i} is the event indicator and \eqn{R_i} is
+#'     the Cox risk set at time \eqn{t_i}. The final objective is
+#'     \deqn{L(\beta) = \sqrt{\ell(\beta)}.}
+#'   }
+#' }
+#'
+#' @param X Numeric design matrix of shape `(n, p)`, where rows are
+#'   observations and columns are candidate predictors. `X` may be a matrix
+#'   or a data frame coercible to a numeric matrix. It must contain at least
+#'   two columns and no `NA`, `NaN`, or infinite values. 
+#' @param y Response variable with length `n`. For Gaussian and Gumbel models,
+#'   `y` must be numeric. For Binomial models, `y` must contain only `0` and
+#'   `1`. For Poisson and Exponential models, `y` must be non-negative. For
+#'   `family = "cox"`, `y` must be a two-column numeric matrix `(time, event)`,
+#'   where `time` is non-negative and `event` is coded as `0` or `1`.
+#' @param family A character name determining the response distribution and
+#'   the associated loss function used during optimisation. See
+#'   \strong{Details on family-specific losses} below for the exact
+#'   objective functions associated with each family. Default `"gaussian"`.
+#' @param penalty Penalty name: one of `"lasso"`, `"scad"`, or `"mcp"`
+#'   (lowercase). Default `"lasso"`. See [pic_penalties] for the precise
+#'   form of each penalty and the role of `scad_a` / `mcp_gamma`.
 #' @param standardize Whether to standardise columns of `X` to zero mean and
-#'   unit variance. Strongly recommended for PDB to be calibrated.
-#'   Default is TRUE.
+#'   unit variance prior to computing the PDB regularisation parameter and
+#'   fitting the model. Strongly recommended for proper PDB calibration.
+#'   When `TRUE`, the optimisation is performed on the standardised design
+#'   matrix and the stored fitted coefficients therefore correspond to the
+#'   standardised scale. Use [coef.pic()] to recover coefficients on the
+#'   original scale of `X`. Default is `TRUE`. Standardisation centres `X`,
+#'   so for non-Cox families it can only be combined with `intercept = TRUE`
+#'   (the intercept absorbs the column-mean shift); pass
+#'   `standardize = FALSE` if you really want `intercept = FALSE`.
 #' @param intercept Whether to fit an unpenalised intercept. Forced to
-#'   `FALSE` for the Cox family.
-#' @param lambda Optional fixed regularisation parameter; when `NULL`, PDB
-#'   chooses it automatically.
-#' @param lambda_method One of `"mc_exact"`, `"mc_gaussian"`, `"analytical"`.
+#'   `FALSE` for the Cox family (whose partial likelihood is invariant under
+#'   translation of the linear predictor, so centring of `X` is harmless).
+#'   For other families, `intercept = FALSE` requires `standardize = FALSE`.
+#' @param lambda Optional user-supplied regularisation parameter. When `NULL`,
+#'   [lambda_pdb()] is used to select it automatically. Providing `lambda`
+#'   avoids recomputing the PDB calibration, which is useful for example when
+#'   fitting several penalties (`"lasso"`, `"scad"`, `"mcp"`) on the same
+#'   dataset, since the PDB choice of \eqn{\lambda} does not depend on the
+#'   penalty itself.
+#' @param lambda_method One of `"mc_exact"`, `"mc_gaussian"`, `"analytical"`. See
+#'   [lambda_pdb()] for details. The default `"mc_exact"` is a safe choice
+#'   for small to moderate designs; for very large \eqn{n} or \eqn{p},
+#'   `"mc_gaussian"` matches `"mc_exact"` closely at a fraction of the
+#'   cost (it amortises only one BLAS \eqn{\tt gemm}, no family-specific
+#'   residual draws), and `"analytical"` is closed-form.
 #' @param relax If `TRUE`, run an unpenalised refit on the selected support
 #'   after the regularisation path (debiasing).
 #' @param mcp_gamma MCP concavity parameter when `penalty = "mcp"`. Default 3.0.
 #' @param scad_a SCAD concavity parameter when `penalty = "scad"`. Default 3.7.
-#' @param lambda_alpha Nominal level for PDB.
-#' @param lambda_n_simu Number of Monte Carlo draws for PDB.
+#' @param lambda_alpha Nominal level for PDB. See [lambda_pdb()].
+#' @param lambda_n_simu Number of Monte Carlo draws for PDB. See [lambda_pdb()].
 #' @param tol FISTA convergence tolerance at the final path step.
+#' @param path_length Number of points in the warm-start regularisation
+#'   path running from \eqn{\lambda_{\max}} down to \eqn{\lambda^{\rm PDB}}.
+#'   Default 10.
 #' @param maxit Maximum number of iterations for FISTA if convergence is not yet reached.
 #'
-#' @return An object of class `c("pic.<family>", "pic")` with components:
-#'   \describe{
+#' @return An object of class `c("pic.<family>", "pic")`.
 #'     \item{beta}{Fitted coefficients (length `p`).}
 #'     \item{intercept}{Fitted intercept or `NULL`.}
-#'     \item{df}{The number of selected variables.}
-#'     \item{selected}{Indices of the selected variables.}
-#'     \item{lambda}{Selected (or fixed) \eqn{\lambda}.}
+#'     \item{df}{The number of nonzero coefficients.}
+#'     \item{selected}{Indices of the nonzero coefficients.}
+#'     \item{lambda}{\eqn{\lambda} used during training (PDB or user-supplied).}
 #'     \item{family}{The family object used.}
 #'     \item{penalty}{The penalty object used.}
-#'     \item{lambda_pdb}{Result from [lambda_pdb()] when `lambda = NULL`.}
+#'     \item{lambda_pdb}{Result from [lambda_pdb()] if \eqn{\lambda} is not user-supplied.}
 #'     \item{n_samples}{The number of observations in the training set.}
 #'     \item{n_features}{The number of variables in the training set.}
-#'   }
-#'
+#' For `family = "cox"`, the fit additionally carries:
+#'     \item{baseline_cumulative_hazard}{Estimated Breslow baseline cumulative hazard function.}
+#'     \item{baseline_survival}{Estimated baseline survival function.}
+#'     \item{unique_times}{Sorted unique event times used in the baseline estimation.}
+#'     \item{censoring_rate}{Percentage of censored observations in the training set.}
+#'     
 #' @examples
-#' \dontrun{
-#' set.seed(1)
-#' n <- 100
-#' p <- 100
-#' s <- 5
-#' X <- matrix(rnorm(n * p), n, p)
-#' beta <- numeric(p)
-#' beta[sample.int(p, s)] <- 3
-#' y <- as.numeric(X %*% beta + rnorm(n))
+#' data(QuickStartExample)
+#' X <- QuickStartExample$X
+#' y <- QuickStartExample$y
 #' fit <- pic(X, y, family = "gaussian", penalty = "scad")
-#' coef(fit)
-#' }
+#' fit$beta
+#' fit$selected
 #' @export
 pic <- function(
   X, y,
@@ -68,9 +180,10 @@ pic <- function(
   scad_a = 3.7,
   lambda = NULL,
   lambda_alpha = 0.05,
-  lambda_n_simu = 5000,
+  lambda_n_simu = 2000,
   tol = 1e-5,
-  maxit = 10000
+  path_length = 10L,
+  maxit = 1000
 ) {
   lambda_method <- match.arg(lambda_method)
   family_obj  <- get_family(match.arg(family))
@@ -87,6 +200,14 @@ pic <- function(
   
   if (family_name == "cox") intercept <- FALSE
 
+  if (!intercept && family_name != "cox" && standardize) {
+    stop("`intercept = FALSE` requires `standardize = FALSE` for family '",
+         family_name, "': PDB calibration centers X, and the resulting ",
+         "shift has nowhere to be absorbed without an intercept. ",
+         "Set `intercept = TRUE`, or pass `standardize = FALSE`.",
+         call. = FALSE)
+  }
+
   prep <- check_Xy(X, y, y_kind = y_kind, standardize_X = standardize)
   X_std <- prep$X
   y_use <- prep$y
@@ -102,12 +223,29 @@ pic <- function(
     lambda_val <- as.numeric(lambda)
   }
 
-  # 4-step warm-started path: lambda fractions ((i/4)^0.8), L1 warm-up,
-  # final step uses the requested penalty with the tight tol.
-  fracs <- (seq_len(4L) / 4)^0.8
-  lam_path <- lambda_val * fracs
-  tol_path <- c(rep(1e-3, 3L), tol)
-  pen_path <- c(replicate(3L, .lasso(), simplify = FALSE), list(penalty_obj))
+  lambda_max_val <- .lambda_max(X_std, y_use, family_obj, intercept)
+  if (lambda_val == 0) {
+    lam_path <- 0
+    pen_path <- list(penalty_obj)
+    tol_path <- tol
+  } else if (lambda_val >= lambda_max_val) {
+    lam_path <- lambda_val
+    pen_path <- list(penalty_obj)
+    tol_path <- tol
+  } else {
+    K <- max(1L, as.integer(path_length))
+    if (K == 1L) {
+      lam_path <- lambda_val
+      pen_path <- list(penalty_obj)
+      tol_path <- tol
+    } else {
+      lam_path <- exp(seq(log(lambda_max_val), log(lambda_val),
+                          length.out = K))
+      pen_path <- c(replicate(K - 1L, .lasso(), simplify = FALSE),
+                    list(penalty_obj))
+      tol_path <- c(rep(1e-3, K - 1L), tol)
+    }
+  }
 
   coef_prev <- NULL
   int_prev <- NULL
@@ -144,11 +282,14 @@ pic <- function(
   }
 
   sel_idx <- which(coef_ != 0)
+  feature_names <- prep$feature_names
+  selected_out <- if (!is.null(feature_names)) feature_names[sel_idx] else sel_idx
+
   fit <- list(
     beta          = coef_,
     intercept     = if (intercept) int_ else NULL,
     df            = length(sel_idx),
-    selected      = sel_idx,
+    selected      = selected_out,
     lambda        = lambda_val,
     family        = family_obj,
     penalty       = penalty_obj,
@@ -159,9 +300,17 @@ pic <- function(
 
   class(fit) <- c(paste0("pic.", family_name), "pic")
 
-  attr(fit, "preproc") <- list(X_mean      = prep$X_mean,
-                               X_std       = prep$X_std,
-                               standardize = standardize)
+  # Per-column default value grids are only retained for Cox fits, where
+  # `feature_effects_on_survival()` uses them to spare the user from
+  # passing the training X back in. Kept NULL for the other families to
+  # avoid useless memory bloat.
+  attr(fit, "preproc") <- list(
+    X_mean         = prep$X_mean,
+    X_std          = prep$X_std,
+    standardize    = standardize,
+    feature_names  = feature_names,
+    feature_values = if (family_name == "cox") prep$feature_values else NULL
+  )
 
   # Cox-specific post-fit: baseline cumulative hazard / survival.
   if (family_name == "cox") {

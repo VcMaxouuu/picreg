@@ -7,14 +7,14 @@
 \method{plot}{pic.lambda_pdb}(x, breaks = 40L, ...)
 }
 \arguments{
-\item{x}{A `pic.lambda_pdb` object (typically `fit$lambda_pdb`).}
+\item{x}{A \code{pic.lambda_pdb} object (typically \code{fit$lambda_pdb}).}
 
 \item{breaks}{Number of histogram bins (default 40).}
 
-\item{...}{Ignored.}
+\item{...}{Unused; present for S3 method consistency.}
 }
 \value{
-Invisibly returns `x`.
+Invisibly returns \code{x}.
 }
 \description{
 Histogram of the simulated null gradient-norm statistics, with a

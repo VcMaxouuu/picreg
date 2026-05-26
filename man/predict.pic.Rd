@@ -7,15 +7,13 @@
 \method{predict}{pic}(object, newx, type = c("response", "link", "class"), ...)
 }
 \arguments{
-\item{object}{A fitted `pic` object.}
+\item{object}{A fitted \code{pic} object.}
 
 \item{newx}{Matrix of new values at which predictions are to be made.}
 
-\item{type}{One of `"link"` (linear predictor),
-`"response"` (default; family `g`-link applied),
-`"coefficients"` (return fitted coefficients incl. intercept)}
+\item{type}{\code{"link"} (linear predictor) or \code{"response"} (default; family \code{g}-link applied).}
 
-\item{...}{Ignored.}
+\item{...}{Unused; present for S3 method consistency.}
 }
 \value{
 A numeric vector.

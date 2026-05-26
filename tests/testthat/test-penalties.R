@@ -7,7 +7,7 @@ test_that("the three penalties all fit and produce positive lambdas", {
 
   fits <- lapply(c("lasso", "scad", "mcp"), function(pen) {
     set.seed(21)   # identical PDB seed across penalties
-    pic(X, y, family = "gaussian", penalty = pen, lambda_n_simu = 200L)
+    pic(X, y, family = "gaussian", penalty = pen)
   })
 
   lambdas <- vapply(fits, `[[`, numeric(1L), "lambda")

@@ -7,14 +7,14 @@
 concordance_index(times, events, predictions)
 }
 \arguments{
-\item{times}{Survival times (length `n`).}
+\item{times}{Survival times (length \code{n}).}
 
-\item{events}{Event indicators (0 or 1; length `n`).}
+\item{events}{Event indicators (0 or 1; length \code{n}).}
 
 \item{predictions}{Risk scores; higher = higher risk = shorter survival.}
 }
 \value{
-Numeric scalar in `[0, 1]`.
+Numeric scalar in \verb{[0, 1]}.
 }
 \description{
 Harrell's concordance index.

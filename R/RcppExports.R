@@ -2,22 +2,30 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 cox_null_grad_norms_cpp <- function(X, n_simu, alpha) {
-    .Call('_picreg_cox_null_grad_norms_cpp', PACKAGE = 'picreg', X, n_simu, alpha)
+    .Call(`_picreg_cox_null_grad_norms_cpp`, X, n_simu, alpha)
 }
 
-fista_cpp <- function(X, y, family_name, penalty_name, lambda_reg, scad_a = 3.7, mcp_gamma = 3.0, fit_intercept = TRUE, rel_tol = 1e-4, step_size_init = 1e-2, max_iter = 500L, eta_param = 0.8, delta_param = 1e-4, rho = 0.5, bb_growth_cap = 2.0, coef_init = NULL, intercept_init = NULL) {
-    .Call('_picreg_fista_cpp', PACKAGE = 'picreg', X, y, family_name, penalty_name, lambda_reg, scad_a, mcp_gamma, fit_intercept, rel_tol, step_size_init, max_iter, eta_param, delta_param, rho, bb_growth_cap, coef_init, intercept_init)
+fista_cpp <- function(X, y, family_name, penalty_name, lambda_reg, scad_a = 3.7, mcp_gamma = 3.0, fit_intercept = TRUE, rel_tol = 1e-4, step_size_init = 1e-1, max_iter = 500L, eta_param = 0.8, delta_param = 1e-4, rho = 0.5, bb_growth_cap = 4.0, coef_init = NULL, intercept_init = NULL) {
+    .Call(`_picreg_fista_cpp`, X, y, family_name, penalty_name, lambda_reg, scad_a, mcp_gamma, fit_intercept, rel_tol, step_size_init, max_iter, eta_param, delta_param, rho, bb_growth_cap, coef_init, intercept_init)
 }
 
 fista_cox_cpp <- function(X, times, events, penalty_name, lambda_reg, scad_a = 3.7, mcp_gamma = 3.0, rel_tol = 1e-4, step_size_init = 1e-2, max_iter = 500L, eta_param = 0.8, delta_param = 1e-4, rho = 0.5, bb_growth_cap = 2.0, coef_init = NULL) {
-    .Call('_picreg_fista_cox_cpp', PACKAGE = 'picreg', X, times, events, penalty_name, lambda_reg, scad_a, mcp_gamma, rel_tol, step_size_init, max_iter, eta_param, delta_param, rho, bb_growth_cap, coef_init)
+    .Call(`_picreg_fista_cox_cpp`, X, times, events, penalty_name, lambda_reg, scad_a, mcp_gamma, rel_tol, step_size_init, max_iter, eta_param, delta_param, rho, bb_growth_cap, coef_init)
+}
+
+lambda_max_cpp <- function(X, y, family_name, fit_intercept) {
+    .Call(`_picreg_lambda_max_cpp`, X, y, family_name, fit_intercept)
+}
+
+lambda_max_cox_cpp <- function(X, times, events) {
+    .Call(`_picreg_lambda_max_cox_cpp`, X, times, events)
 }
 
 pdb_mc_gaussian_cpp <- function(X, c_n, n_simu, alpha) {
-    .Call('_picreg_pdb_mc_gaussian_cpp', PACKAGE = 'picreg', X, c_n, n_simu, alpha)
+    .Call(`_picreg_pdb_mc_gaussian_cpp`, X, c_n, n_simu, alpha)
 }
 
 pdb_mc_exact_cpp <- function(X, family_name, n_simu, alpha) {
-    .Call('_picreg_pdb_mc_exact_cpp', PACKAGE = 'picreg', X, family_name, n_simu, alpha)
+    .Call(`_picreg_pdb_mc_exact_cpp`, X, family_name, n_simu, alpha)
 }
 

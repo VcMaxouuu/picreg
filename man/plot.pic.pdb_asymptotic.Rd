@@ -2,29 +2,29 @@
 % Please edit documentation in R/plots.R
 \name{plot.pic.pdb_asymptotic}
 \alias{plot.pic.pdb_asymptotic}
-\title{Diagnostic plot of the PDB asymptotic behaviour.}
+\title{Plot of the PDB asymptotic behaviour.}
 \usage{
 \method{plot}{pic.pdb_asymptotic}(x, breaks = 40L, ...)
 }
 \arguments{
-\item{x}{An object returned by [pdb_asymptotic()].}
+\item{x}{An object returned by \code{\link[=pdb_asymptotic]{pdb_asymptotic()}}.}
 
 \item{breaks}{Number of histogram bins (default 40).}
 
-\item{...}{Ignored.}
+\item{...}{Unused; present for S3 method consistency.}
 }
 \value{
-Invisibly returns `x`.
+Invisibly returns \code{x}.
 }
 \description{
 Multi-panel histogram comparison of the simulated null gradient-norm
-statistic under the `"mc_exact"` (light grey fill) and `"mc_gaussian"`
-(dashed outline) selectors, one panel per `n` in `n_grid`. Two
+statistic under the \code{"mc_exact"} (light grey fill) and \code{"mc_gaussian"}
+(dashed outline) selectors, one panel per \code{n} in \code{n_grid}. Two
 vertical lines are added per panel:
+\itemize{
+\item \eqn{\hat\lambda^{\rm PDB}_\alpha} - solid navy, the empirical (1 - alpha)
+quantile of \code{"mc_exact"} (what pic would actually use).
+\item \eqn{\hat\lambda_{analytical}} - dashed black, the Bonferroni
+closed-form bound.
 }
-\details{
-* \eqn{\hat\lambda_{PDB}} — solid navy, the empirical (1 - alpha)
-  quantile of `"mc_exact"` (what pic would actually use).
-* \eqn{\hat\lambda_{analytical}} — dashed black, the Bonferroni
-  closed-form bound.
 }

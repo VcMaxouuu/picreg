@@ -29,12 +29,12 @@
 fista <- function(X, y, family, penalty, lambda_reg,
                   fit_intercept = TRUE,
                   rel_tol = 1e-4,
-                  step_size_init = 1e-2,
+                  step_size_init = 1e-1,
                   max_iter = 500L,
                   eta_param = 0.8,
                   delta_param = 1e-4,
                   rho = 0.5,
-                  bb_growth_cap = 2.0,
+                  bb_growth_cap = 4.0,
                   coef_init = NULL,
                   intercept_init = NULL) {
   scad_a    <- if (!is.null(penalty$params$a))     penalty$params$a     else 3.7

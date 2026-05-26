@@ -22,7 +22,7 @@ test_that("pic() returns the right object structure", {
   X <- matrix(rnorm(n * p), n, p)
   y <- as.numeric(X[, 1] + rnorm(n))
 
-  fit <- pic(X, y, family = "gaussian", lambda_n_simu = 200L)
+  fit <- pic(X, y, family = "gaussian")
 
   expect_true(all(c("beta", "intercept", "df", "selected", "lambda",
                     "family", "penalty", "lambda_pdb",
@@ -48,7 +48,7 @@ test_that("predict.pic returns sensible outputs for type = link / response", {
   expect_equal(link, resp)   # Gaussian: identity link
 })
 
-test_that("coef.pic returns a named vector with intercept first", {
+test_that("coef.pic returns a 2-column data.frame with intercept first", {
   set.seed(4)
   n <- 50; p <- 10
   X <- matrix(rnorm(n * p), n, p)
@@ -57,6 +57,40 @@ test_that("coef.pic returns a named vector with intercept first", {
   fit <- pic(X, y, family = "gaussian", lambda_n_simu = 200L)
   co  <- coef(fit)
 
-  expect_length(co, p + 1L)
-  expect_equal(names(co)[1L], "(Intercept)")
+  expect_s3_class(co, "pic.coef")
+  expect_s3_class(co, "data.frame")
+  expect_equal(names(co), c("variable", "coefficient"))
+  expect_equal(nrow(co), p + 1L)
+  expect_equal(co$variable[1L], "(Intercept)")
+  expect_type(co$coefficient, "double")
+})
+
+test_that("coef.pic uses column names of X when available", {
+  set.seed(41)
+  n <- 50; p <- 6
+  X <- matrix(rnorm(n * p), n, p)
+  colnames(X) <- paste0("gene_", seq_len(p))
+  y <- as.numeric(X[, 1] + rnorm(n))
+
+  fit <- pic(X, y, lambda_n_simu = 200L)
+
+  co <- coef(fit)
+  expect_equal(co$variable[-1L], paste0("gene_", seq_len(p)))
+
+  # fit$selected returns names rather than integer indices when X had
+  # column names.
+  expect_type(fit$selected, "character")
+  expect_true(all(fit$selected %in% colnames(X)))
+})
+
+test_that("coef.pic falls back to V1..Vp without column names", {
+  set.seed(42)
+  n <- 40; p <- 5
+  X <- matrix(rnorm(n * p), n, p)
+  y <- as.numeric(X[, 1] + rnorm(n))
+
+  fit <- pic(X, y, lambda_n_simu = 200L)
+  co  <- coef(fit)
+  expect_equal(co$variable[-1L], paste0("V", seq_len(p)))
+  expect_type(fit$selected, "integer")
 })

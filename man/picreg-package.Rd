@@ -6,26 +6,23 @@
 \alias{picreg-package}
 \title{picreg: Variable Selection using the Pivotal Information Criterion}
 \description{
-Sparse regression and classification with automatic regularisation
-parameter selection via the Pivotal Detection Boundary (PDB) method.
-Implements FISTA optimisation for L1, SCAD and MCP penalties across
-Gaussian, Binomial, Poisson, Exponential, Gumbel and Cox families.
+Sparse regression and classification via the Pivotal Information Criterion (PIC), an alternative to BIC, cross-validation, and Lasso-based tuning. The regularisation parameter is selected from a pivotal null-distribution statistic, eliminating the need for cross-validation and yielding sharper support recovery. Provides FISTA optimisation for the L1, SCAD, and MCP penalties across six response distributions: Gaussian, binomial, Poisson, exponential, Gumbel, and Cox. Under standard sparsity assumptions, the selector achieves a phase transition for exact support recovery, analogous to results in compressed sensing. See \doi{10.48550/arXiv.2603.04172}.
 }
 \seealso{
 Useful links:
 \itemize{
-  \item <TODO: project URL
-  \item e.g. \url{https://github.com/MaximeVanCutsem/picreg>}
-  \item Report bugs at \url{<TODO: issue tracker URL, e.g. https://github.com/MaximeVanCutsem/picreg/issues>}
+  \item \url{https://github.com/VcMaxouuu/picreg}
+  \item Report bugs at \url{https://github.com/VcMaxouuu/picreg/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: Maxime Van Cutsem \email{maxime.vancutsem@unige.ch}
+\strong{Maintainer}: Maxime van Cutsem \email{maxime.vancutsem@unige.ch}
 
 Authors:
 \itemize{
-  \item Maxime Van Cutsem \email{maxime.vancutsem@unige.ch}
+  \item Maxime van Cutsem \email{maxime.vancutsem@unige.ch}
+  \item Sylvain Sardy \email{sylvain.sardy@unige.ch}
 }
 
 }

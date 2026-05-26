@@ -2,11 +2,11 @@
 % Please edit documentation in R/prepareX.R
 \name{check_Xy}
 \alias{check_Xy}
-\title{Joint validation/preprocessing of `(X, y)`.}
+\title{Joint validation/preprocessing of \verb{(X, y)}.}
 \usage{
 check_Xy(X, y, y_kind, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
 }
 \description{
-For survival data, rows of `X` and `y` are sorted by ascending time.
+For survival data, rows of \code{X} and \code{y} are sorted by ascending time.
 }
 \keyword{internal}

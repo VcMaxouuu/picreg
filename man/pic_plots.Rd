@@ -2,25 +2,18 @@
 % Please edit documentation in R/plots.R
 \name{pic_plots}
 \alias{pic_plots}
-\title{Plotting utilities for pic fits and diagnostics.}
+\title{Plot methods for pic fits and diagnostics.}
 \description{
-All pic plots share a common minimalist aesthetic:
+Entry points:
 }
 \details{
-* grayscale by default, with a single dark-navy accent reserved for the
-  value the user is meant to focus on (e.g. \eqn{\hat\lambda_{PDB}});
-* an L-shaped axis frame (no full box), short outward tick marks,
-  sans-serif typography and tight margins;
-* curves distinguished by line type and point shape — not colour —
-  whenever multiple series are shown on the same panel.
-
-Entry points:
-
-* `plot(fit)` — lollipop plot of the non-zero coefficients.
-* `plot(fit$lambda_pdb)` — histogram of the PDB null distribution
-  with a vertical line at the selected \eqn{\hat\lambda}.
-* [plot_baseline()] — Cox-only: baseline cumulative hazard and
-  baseline survival, two panels.
-* `plot(phase_transition(...))` — recovery curves.
-* `plot(pdb_asymptotic(...))` — null-distribution convergence panels.
+\itemize{
+\item \code{plot(fit)} - lollipop plot of the non-zero coefficients.
+\item \code{plot(fit$lambda_pdb)} - histogram of the PDB null distribution
+with a vertical line at the selected \eqn{\hat\lambda}.
+\item \code{\link[=plot_baseline]{plot_baseline()}} - Cox-only: baseline cumulative hazard and
+baseline survival, two panels.
+\item \code{plot(phase_transition(...))} - recovery curves.
+\item \code{plot(pdb_asymptotic(...))} - null-distribution convergence panels.
+}
 }

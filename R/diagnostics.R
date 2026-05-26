@@ -3,7 +3,8 @@
 #' For a fixed `(n, p)` configuration, varies the sparsity level `s`
 #' from `0` to `s_max` and, for each `s`, estimates by Monte Carlo
 #' (`m` replications) the probability that `pic()` recovers exactly
-#' the support of the true coefficient vector.
+#' the support of the true coefficient vector. If several penalties are
+#' supplied, one result is produced for each `(n, p, penalty)` combination.
 #'
 #' At each Monte Carlo replicate a design matrix is drawn from a
 #' standard Gaussian, `s` features are sampled uniformly at random,
@@ -12,14 +13,49 @@
 #' compared to the truth and three metrics are stored:
 #'
 #' \describe{
-#'   \item{exact_recovery}{1 if the selected set equals the true set, 0 otherwise.}
-#'   \item{tpr}{|selected \eqn{\cap} true| / s — true positive rate. For `s = 0`, this is set to 1 when no true feature exists.}
-#'   \item{fdr}{|selected \\ true| / max(|selected|, 1) — false discovery rate.}
+#'   \item{`exact_recovery`}{1 if the selected set equals the true set, 0 otherwise.}
+#'   \item{`tpr`}{\eqn{\left|\hat{S}\cap S\right| / |S|} - true positive rate. For `s = 0`, this is set to 1 when no true feature exists.}
+#'   \item{`fdr`}{\eqn{\left|\hat{S}\setminus S\right| / \max{(|\hat{S}|, 1)}} - false discovery rate.}
+#' }
+#' 
+#' ## Details on data sampling
+#'
+#' At each replicate, the design \eqn{X} is drawn iid
+#' \eqn{\mathcal{N}(0, 1)}, the true support \eqn{S} is sampled
+#' uniformly at random, and \eqn{\beta_j = } `beta_value` for
+#' \eqn{j \in S}, \eqn{\beta_j = 0} otherwise. The linear predictor
+#' is \eqn{\eta = X\beta}. The response \eqn{y} is then drawn
+#' conditionally on \eqn{\eta} according to the requested family:
+#'
+#' \describe{
+#'   \item{`"gaussian"`}{
+#'     \eqn{y_i = \eta_i + \varepsilon_i} with
+#'     \eqn{\varepsilon_i \sim \mathcal{N}(0, 1)}.
+#'   }
+#'   \item{`"binomial"`}{
+#'     \eqn{y_i \sim \mathrm{Bernoulli}\!\left(\sigma(\eta_i)\right)},
+#'     where \eqn{\sigma(z) = 1 / (1 + e^{-z})} is the logistic
+#'     function.
+#'   }
+#'   \item{`"poisson"`}{
+#'     \eqn{y_i \sim \mathrm{Poisson}\!\left(e^{\eta_i}\right)}.
+#'   }
+#'   \item{`"exponential"`}{
+#'     \eqn{y_i \sim \mathrm{Exp}\!\left(\mathrm{rate} = e^{\eta_i}\right)}.
+#'   }
+#'   \item{`"gumbel"`}{
+#'     \eqn{y_i = \eta_i + \varepsilon_i} with
+#'     \eqn{\varepsilon_i \sim \mathrm{Gumbel}(0, 1)}, drawn as
+#'     \eqn{-\log(-\log U_i)} for \eqn{U_i \sim \mathcal{U}(0, 1)}.
+#'   }
+#'   \item{`"cox"`}{
+#'     Event times \eqn{T_i \sim \mathrm{Exp}\!\left(e^{\eta_i}\right)}
+#'     and independent censoring times
+#'     \eqn{C_i \sim \mathrm{Exp}(1)}. The response is the 2-column
+#'     matrix \eqn{\bigl(\min(T_i, C_i),\, \mathbf{1}\{T_i \le C_i\}\bigr)}.
+#'   }
 #' }
 #'
-#' `n` and `p` may be scalars (one configuration) or vectors of equal length
-#' (one configuration per `(n[k], p[k])` pair). If several penalties are
-#' supplied, one curve is produced for each `(n, p, penalty)` combination.
 #'
 #' @param n Integer or integer vector — number of observations per configuration.
 #' @param p Integer or integer vector of the same length as `n` — number of features.
@@ -34,32 +70,28 @@
 #' @param lambda_alpha Nominal level for the PDB selector.
 #' @param lambda_n_simu Monte Carlo size for the PDB selector.
 #' @param verbose Logical; if `TRUE`, prints a one-line progress message per `(n, p, penalty, s)`.
+#' @param parallel Logical; if `TRUE`, distribute the `m` Monte Carlo
+#'   replications of each `(n, p, penalty, s)` cell across multiple R
+#'   processes via the `future` framework (`future::multisession` plan).
+#' @param workers Integer; number of background R processes to use when
+#'   `parallel = TRUE`. Ignored otherwise.
 #'
-#' @return An object of class `c("pic.phase_transition", "pic.diagnostic")`
-#'   with components:
-#'   \describe{
-#'     \item{s_grid}{`0:s_max`.}
-#'     \item{exact_recovery, tpr, fdr}{matrices of shape `(length(n) * length(penalty), s_max + 1)` —
-#'       one row per `(n, p, penalty)` curve, one column per sparsity level.}
-#'     \item{curve_n, curve_p, curve_penalty}{Curve descriptors aligned with the rows of the metric matrices.}
-#'     \item{config}{A list of all configuration arguments for downstream plotting / reporting.}
-#'     \item{call}{The call.}
-#'   }
+#' @return An object of class `c("pic.phase_transition", "pic.diagnostic")`.
+#' \item{s_grid}{`0:s_max`.}
+#' \item{exact_recovery, tpr, fdr}{Matrices of shape `(length(n) * length(penalty), s_max + 1)` -
+#'       one row per `(n, p, penalty)` curve, one column per sparsity level}
+#' \item{curve_n, curve_p, curve_penalty}{Curve descriptors aligned with the rows of the metric matrices.}
+#' \item{config}{A list of all configuration arguments for downstream plotting / reporting.}
+#' \item{call}{The call.}
 #'
 #' @seealso [plot.pic.phase_transition()] for visualisation.
 #'
 #' @examples
-#' \dontrun{
-#' # Single configuration, multiple penalties
-#' pt <- phase_transition(n = 200, p = 500, type = "gaussian",
-#'                        s_max = 20, m = 50,
-#'                        penalty = c("lasso", "scad", "mcp"))
-#' plot(pt)
-#'
-#' # Two configurations and two penalties on the same plot
-#' pt <- phase_transition(n = c(200, 400), p = c(500, 500),
-#'                        type = "binomial", s_max = 15, m = 50,
-#'                        penalty = c("lasso", "scad"))
+#' \donttest{
+#' pt <- phase_transition(n = 50, p = 100, type = "gaussian",
+#'                        s_max = 8, m = 20,
+#'                        penalty = c("lasso", "scad"), 
+#'                        parallel = TRUE)
 #' plot(pt)
 #' }
 #' @export
@@ -68,37 +100,39 @@ phase_transition <- function(
     type          = c("gaussian", "binomial", "poisson",
                       "exponential", "gumbel", "cox"),
     s_max,
-    m             = 100,
-    penalty       = c("lasso", "scad", "mcp"),
+    m             = 50,
+    penalty       = "lasso",
     beta_value    = 3,
     lambda_method = "mc_exact",
     lambda_alpha  = 0.05,
     lambda_n_simu = 5000L,
-    verbose       = TRUE
+    verbose       = FALSE,
+    parallel      = FALSE,
+    workers       = parallel::detectCores() - 1L
 ) {
   type <- match.arg(type)
-  penalty <- match.arg(penalty, several.ok = TRUE)
+  penalty <- match.arg(
+    penalty,
+    choices = c("lasso", "scad", "mcp"),
+    several.ok = TRUE
+  )
   
   n <- as.integer(n)
   p <- as.integer(p)
   
   if (length(n) != length(p))
     stop("`n` and `p` must have the same length.")
-  if (any(n <= 0L) || any(p <= 0L))
-    stop("`n` and `p` must be positive.")
   
   s_max <- as.integer(s_max)
-  if (length(s_max) != 1L || s_max < 0L)
-    stop("`s_max` must be a non-negative scalar integer.")
-  if (s_max >= min(p))
-    stop("`s_max` must be strictly less than min(p).")
-  
   m <- as.integer(m)
-  if (length(m) != 1L || m < 1L)
-    stop("`m` must be a positive scalar integer.")
   
   s_grid <- 0:s_max
   K <- length(n)
+  
+  if (parallel) {
+    future::plan(future::multisession, workers = workers)
+    on.exit(future::plan(future::sequential), add = TRUE)
+  }
   
   results <- vector("list", K * length(penalty) * length(s_grid))
   row_id <- 0L
@@ -109,46 +143,44 @@ phase_transition <- function(
     
     for (pen in penalty) {
       for (s in s_grid) {
-        exact <- numeric(m)
-        tpr_s <- numeric(m)
-        fdr_s <- numeric(m)
         
-        for (rep in seq_len(m)) {
-          sim <- .generate_recovery_data(nk, pk, s, type, beta_value)
-          
-          fit <- tryCatch(
-            pic(
-              sim$X,
-              sim$y,
-              family = type,
-              penalty = pen,
-              lambda_method = lambda_method,
-              lambda_alpha = lambda_alpha,
-              lambda_n_simu = lambda_n_simu
-            ),
-            error = function(e) NULL
-          )
-          
-          if (is.null(fit)) {
-            exact[rep] <- 0
-            tpr_s[rep] <- 0
-            fdr_s[rep] <- 1
-            next
-          }
-          
-          sel <- sort(fit$selected)
-          true <- sort(sim$true_features)
-          
-          exact[rep] <- as.integer(identical(sel, true))
-          
-          tpr_s[rep] <- if (length(true) == 0L) {
-            1
-          } else {
-            length(intersect(sel, true)) / length(true)
-          }
-          
-          fdr_s[rep] <- length(setdiff(sel, true)) / max(length(sel), 1L)
-        }
+        rep_results <- future.apply::future_lapply(
+          seq_len(m),
+          future.packages = "picreg",
+          function(rep) {
+            sim <- .generate_recovery_data(nk, pk, s, type, beta_value)
+            
+            fit <- tryCatch(
+              pic(
+                sim$X,
+                sim$y,
+                family = type,
+                penalty = pen,
+                lambda_method = lambda_method,
+                lambda_alpha = lambda_alpha,
+                lambda_n_simu = lambda_n_simu
+              ),
+              error = function(e) NULL
+            )
+            
+            if (is.null(fit)) {
+              return(c(exact = 0, tpr = 0, fdr = 1))
+            }
+            
+            sel <- sort(fit$selected)
+            true <- sort(sim$true_features)
+            
+            c(
+              exact = as.integer(identical(sel, true)),
+              tpr = if (length(true) == 0L) 1 else length(intersect(sel, true)) / length(true),
+              fdr = length(setdiff(sel, true)) / max(length(sel), 1L)
+
+            )
+          },
+          future.seed = TRUE
+        )
+        
+        rep_results <- do.call(rbind, rep_results)
         
         row_id <- row_id + 1L
         
@@ -157,9 +189,9 @@ phase_transition <- function(
           p = pk,
           penalty = pen,
           s = s,
-          exact_recovery = mean(exact),
-          tpr = mean(tpr_s),
-          fdr = mean(fdr_s),
+          exact_recovery = mean(rep_results[, "exact"]),
+          tpr = mean(rep_results[, "tpr"]),
+          fdr = mean(rep_results[, "fdr"]),
           stringsAsFactors = FALSE
         )
         
@@ -167,7 +199,9 @@ phase_transition <- function(
           message(sprintf(
             "(n=%d, p=%d, penalty=%s, s=%d) recovery=%.2f  tpr=%.2f  fdr=%.2f",
             nk, pk, pen, s,
-            mean(exact), mean(tpr_s), mean(fdr_s)
+            mean(rep_results[, "exact"]),
+            mean(rep_results[, "tpr"]),
+            mean(rep_results[, "fdr"])
           ))
         }
       }
@@ -231,7 +265,7 @@ phase_transition <- function(
 #' Print phase-transition analysis.
 #'
 #' @param x A `pic.phase_transition` object.
-#' @param ... Ignored.
+#' @param ... Unused; present for S3 method consistency.
 #'
 #' @return Invisibly returns `x`.
 #' @export
@@ -313,8 +347,7 @@ print.pic.phase_transition <- function(x, ...) {
 #' The intended use is to **visualise the convergence** of the exact
 #' family-specific null distribution to the Gaussian approximation as
 #' `n` grows — i.e., to check empirically that `mc_gaussian` is a valid
-#' (and much faster) substitute for `mc_exact` in the asymptotic
-#' regime.
+#' substitute for `mc_exact` in the asymptotic regime.
 #'
 #' @param n_grid Integer vector of sample sizes to evaluate.
 #' @param p Number of features (scalar integer).
@@ -325,27 +358,22 @@ print.pic.phase_transition <- function(x, ...) {
 #' @param verbose Logical; if `TRUE`, prints a one-line progress
 #'   message per `n`.
 #'
-#' @return An object of class `c("pic.pdb_asymptotic", "pic.diagnostic")`
-#'   with components:
-#'   \describe{
-#'     \item{n_grid, p, type, alpha, n_simu}{Configuration.}
-#'     \item{stats_exact, stats_gaussian}{Lists of length `length(n_grid)`;
+#' @return An object of class `c("pic.pdb_asymptotic", "pic.diagnostic")`.
+#'  \item{n_grid, p, type, alpha, n_simu}{Configuration.}
+#'  \item{stats_exact, stats_gaussian}{Lists of length `length(n_grid)` where
 #'       each element is a numeric vector of length `n_simu` containing
 #'       the simulated null statistics from the corresponding selector.}
-#'     \item{lambda_exact, lambda_gaussian, lambda_analytical}{Numeric
-#'       vectors of length `length(n_grid)` — the (1 - alpha) quantile
+#'  \item{lambda_exact, lambda_gaussian, lambda_analytical}{Numeric
+#'       vectors of length `length(n_grid)` - the (1 - alpha) quantile
 #'       under each selector at each `n`.}
-#'     \item{call}{The call.}
-#'   }
+#'  \item{call}{The call.}
 #'
 #' @seealso [plot.pic.pdb_asymptotic()] for visualisation.
 #'
 #' @examples
-#' \dontrun{
 #' as_ <- pdb_asymptotic(n_grid = c(50, 200, 1000),
 #'                       p = 200, type = "poisson")
 #' plot(as_)
-#' }
 #' @export
 pdb_asymptotic <- function(
     n_grid,
@@ -354,7 +382,7 @@ pdb_asymptotic <- function(
                 "exponential", "gumbel", "cox"),
     alpha   = 0.05,
     n_simu  = 5000L,
-    verbose = TRUE
+    verbose = FALSE
 ) {
   type <- match.arg(type)
 
@@ -432,7 +460,7 @@ pdb_asymptotic <- function(
 #' Print PDB asymptotic diagnostic.
 #'
 #' @param x A `pic.pdb_asymptotic` object.
-#' @param ... Ignored.
+#' @param ... Unused; present for S3 method consistency.
 #' @return Invisibly returns `x`.
 #' @export
 print.pic.pdb_asymptotic <- function(x, ...) {

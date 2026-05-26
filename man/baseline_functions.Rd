@@ -7,14 +7,14 @@
 baseline_functions(times, events, predictions)
 }
 \arguments{
-\item{times}{Survival times (length `n`).}
+\item{times}{Survival times (length \code{n}).}
 
-\item{events}{Event indicators (0 or 1; length `n`).}
+\item{events}{Event indicators (0 or 1; length \code{n}).}
 
 \item{predictions}{Risk scores; higher = higher risk = shorter survival.}
 }
 \value{
-A data.frame with columns `time`, `cumulative_hazard`, `survival`.
+A data.frame with columns \code{time}, \code{cumulative_hazard}, \code{survival}.
 }
 \description{
 Breslow baseline cumulative hazard and survival.

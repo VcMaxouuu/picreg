@@ -5,17 +5,21 @@
 \title{GLM families for pic — descriptor layer.}
 \description{
 Each family is a thin descriptor carrying:
-  * `name` — used by the dispatchers to route to the C++ implementation.
-  * `g`    — mean-function link (object with `name` and callable `fn`).
-             `g$fn(eta)` is applied at predict time to obtain the mean
-             response.
-  * `phi`  — variance-stabilising transform (object with `name`).
-             Purely informational on the R side; the actual stabilisation
-             happens inside the C++ math.
+\itemize{
+\item \code{name} - used by the dispatchers to route to the C++ implementation.
+\item \code{g}    - mean-function link (object with \code{name} and callable \code{fn}).
+\code{g$fn(eta)} is applied at predict time to obtain the mean
+response.
+\item \code{phi}  - variance-stabilising transform (object with \code{name}).
+Purely informational on the R side; the actual stabilisation
+happens inside the C++ math.
+}
 }
 \details{
-Typing `fit$family` gives a one-glance summary of the model's family
-(see [print.pic.family()]). The actual loss / gradient math lives in C++:
-  * `src/family_*.cpp`     — Gaussian, Binomial, Poisson, Exponential, Gumbel.
-  * `src/cox.cpp`          — Cox.
+Typing \code{fit$family} gives a one-glance summary of the model's family
+(see \code{\link[=print.pic.family]{print.pic.family()}}). The actual loss / gradient math lives in C++:
+\itemize{
+\item \code{src/family_*.cpp}     — Gaussian, Binomial, Poisson, Exponential, Gumbel.
+\item \code{src/cox.cpp}          — Cox.
+}
 }

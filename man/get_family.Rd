@@ -13,8 +13,8 @@ get_family(family)
 A pic family descriptor.
 }
 \description{
-Accepts one of the six supported names: `"gaussian"`, `"binomial"`,
-`"poisson"`, `"exponential"`, `"gumbel"`, `"cox"`. Anything else raises
+Accepts one of the six supported names: \code{"gaussian"}, \code{"binomial"},
+\code{"poisson"}, \code{"exponential"}, \code{"gumbel"}, \code{"cox"}. Anything else raises
 an error — the build does not support user-defined families.
 Already-built descriptors are returned unchanged (internal re-entry).
 }

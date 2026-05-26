@@ -12,12 +12,12 @@ fista(
   lambda_reg,
   fit_intercept = TRUE,
   rel_tol = 1e-04,
-  step_size_init = 0.01,
+  step_size_init = 0.1,
   max_iter = 500L,
   eta_param = 0.8,
   delta_param = 1e-04,
   rho = 0.5,
-  bb_growth_cap = 2,
+  bb_growth_cap = 4,
   coef_init = NULL,
   intercept_init = NULL
 )
@@ -27,9 +27,9 @@ fista(
 
 \item{y}{Response vector (length n).}
 
-\item{family}{A pic family object (provides `name`).}
+\item{family}{A pic family object (provides \code{name}).}
 
-\item{penalty}{A pic penalty object (provides `name`, `params`).}
+\item{penalty}{A pic penalty object (provides \code{name}, \code{params}).}
 
 \item{lambda_reg}{Regularisation parameter.}
 
@@ -52,16 +52,16 @@ fista(
 \item{coef_init, intercept_init}{Optional warm starts.}
 }
 \value{
-A list with `coef`, `intercept`, `info`.
+A list with \code{coef}, \code{intercept}, \code{info}.
 }
 \description{
-Thin R wrapper around the C++ `fista_cpp` implementation. The actual
-algorithm (Li & Lin, NeurIPS 2015) lives in `src/fista.cpp`; this
+Thin R wrapper around the C++ \code{fista_cpp} implementation. The actual
+algorithm (Li & Lin, NeurIPS 2015) lives in \code{src/fista.cpp}; this
 function only extracts the C++-facing arguments and routes the call.
 }
 \details{
-Cox is routed to a dedicated C++ FISTA (`fista_cox_cpp`) because its
-loss has no intercept and uses a 2-column `(time, event)` response.
+Cox is routed to a dedicated C++ FISTA (\code{fista_cox_cpp}) because its
+loss has no intercept and uses a 2-column \verb{(time, event)} response.
 The build accepts only the six families and three penalties that have
 a C++ implementation; the family / penalty registries throw on any
 other input upstream.

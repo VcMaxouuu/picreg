@@ -3,19 +3,29 @@
 #' Standardises columns to zero mean and unit variance (population sd; `n` divisor)
 #' when `standardize_X` is `TRUE`. When `X_mean` and `X_std` are supplied they
 #' are reapplied without recomputing — used at prediction time on new data.
+#' Column names of `X` (or column names of the source data frame) are captured
+#' and returned as `feature_names`; they are propagated through `pic()` to
+#' annotate `fit$selected`, `coef()`, and the coefficient plot.
 #'
 #' @param X A numeric matrix or coercible (data.frame).
 #' @param standardize_X Logical; standardise columns of `X`.
 #' @param X_mean Optional pre-computed column means.
 #' @param X_std Optional pre-computed column standard deviations.
-#' @return A list with components `X`, `X_mean`, `X_std`.
+#' @return A list with components `X`, `X_mean`, `X_std`, `feature_names`
+#'   (the column names of `X` if any, otherwise `NULL`).
 #' @keywords internal
 check_X <- function(X,
                     standardize_X = TRUE,
                     X_mean = NULL,
                     X_std = NULL) {
+  # A bare numeric vector is interpreted as one observation, not one
+  # feature.
+  if (is.numeric(X) && is.null(dim(X))) {
+    X <- matrix(X, nrow = 1L, dimnames = list(NULL, names(X)))
+  }
   X <- as.matrix(X)
-  
+  feature_names <- colnames(X)
+
   if (!is.numeric(X)) {
     stop("X must contain only numeric values.")
   }
@@ -25,31 +35,55 @@ check_X <- function(X,
   if (ncol(X) < 2L) {
     stop("X must have at least 2 columns.")
   }
-  
+
   storage.mode(X) <- "double"
-  
+
   if (any(!is.finite(X))) {
     stop("X contains NA, NaN, or Inf values.")
   }
-  
+
+  # Fit-time only: pre-compute a small set of representative values per
+  # column on the original scale, used downstream by
+  # `feature_effects_on_survival()` so the caller does not have to keep
+  # the training X around. Heuristic mirrors the runtime default of
+  # that function: unique values when there are at most five (handy
+  # for ordinal / categorical covariates), otherwise four equispaced
+  # empirical quantiles. Suppressed at predict time, detected via
+  # supplied X_mean / X_std.
+  feature_values <- NULL
+  if (is.null(X_mean) && is.null(X_std)) {
+    feature_values <- lapply(seq_len(ncol(X)), function(j) {
+      col <- X[, j]
+      uv  <- unique(col)
+      if (length(uv) <= 5L)
+        sort(uv)
+      else
+        as.numeric(stats::quantile(col,
+                                   seq(0, 1, length.out = 4L),
+                                   names = FALSE))
+    })
+  }
+
   if (standardize_X) {
     if (is.null(X_mean)) {
       X_mean <- colMeans(X)
     }
-    
+
     if (is.null(X_std)) {
       X_centered <- sweep(X, 2L, X_mean, FUN = "-", check.margin = FALSE)
       X_std <- sqrt(colMeans(X_centered^2))
       X_std[X_std == 0] <- 1
     }
-    
+
     X <- sweep(X, 2L, X_mean, FUN = "-", check.margin = FALSE)
     X <- sweep(X, 2L, X_std, FUN = "/", check.margin = FALSE)
   }
-  
+
   list(X = X,
        X_mean = X_mean,
-       X_std = X_std)
+       X_std = X_std,
+       feature_names = feature_names,
+       feature_values = feature_values)
 }
 #' Validate response according to its distributional kind.
 #'
@@ -127,6 +161,8 @@ check_Xy <- function(X,
     X = px$X,
     X_mean = px$X_mean,
     X_std = px$X_std,
-    y = y
+    y = y,
+    feature_names = px$feature_names,
+    feature_values = px$feature_values
   )
 }
