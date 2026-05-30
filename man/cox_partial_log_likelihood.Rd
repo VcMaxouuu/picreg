@@ -13,6 +13,11 @@ cox_partial_log_likelihood(times, events, predictions)
 
 \item{predictions}{Risk scores; higher = higher risk = shorter survival.}
 }
+\value{
+A numeric scalar: the negative Breslow partial log-likelihood
+for the Cox proportional-hazards model, normalised by the sample
+size \code{n}. Lower values indicate a better fit.
+}
 \description{
 Breslow partial log-likelihood (negative, normalised by \code{n}).
 }

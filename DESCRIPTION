@@ -1,8 +1,8 @@
 Package: picreg
 Type: Package
 Title: Variable Selection using the Pivotal Information Criterion
-Version: 0.1.0
-Date: 2026-05-18
+Version: 0.1.1
+Date: 2026-05-30
 Authors@R: c(
     person("Maxime", "van Cutsem",
            role  = c("aut", "cre"),
@@ -11,16 +11,19 @@ Authors@R: c(
            role  = "aut",
            email = "sylvain.sardy@unige.ch"))
 Description: Sparse regression and classification via the Pivotal
-    Information Criterion (PIC), an alternative to BIC,
-    cross-validation, and Lasso-based tuning. The regularisation
-    parameter is selected from a pivotal null-distribution statistic,
-    eliminating the need for cross-validation and yielding sharper
-    support recovery. Provides FISTA optimisation for the L1, SCAD,
-    and MCP penalties across six response distributions: Gaussian,
-    binomial, Poisson, exponential, Gumbel, and Cox. Under
-    standard sparsity assumptions, the selector achieves a phase
-    transition for exact support recovery, analogous to results in
-    compressed sensing. See <doi:10.48550/arXiv.2603.04172>.
+    Information Criterion (PIC), an alternative to the Bayesian
+    Information Criterion (BIC), cross-validation, and Lasso-based
+    tuning. The regularisation parameter is selected from a pivotal
+    null-distribution statistic, eliminating the need for
+    cross-validation and yielding sharper support recovery. Provides
+    Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)
+    optimisation for the L1, Smoothly Clipped Absolute Deviation
+    (SCAD), and Minimax Concave Penalty (MCP) penalties across six
+    response distributions: Gaussian, binomial, Poisson, exponential,
+    Gumbel, and Cox. Under standard sparsity assumptions, the
+    selector achieves a phase transition for exact support recovery,
+    analogous to results in compressed sensing. See Sardy, van Cutsem
+    and van de Geer (2026) <doi:10.48550/arXiv.2603.04172>.
 License: GPL-2
 URL: https://github.com/VcMaxouuu/picreg
 BugReports: https://github.com/VcMaxouuu/picreg/issues

@@ -13,3 +13,4 @@
 ^picreg-manual\.pdf$
 ^\.Rd2pdf.*$
 ^.*\.Rcheck$
+^CRAN-SUBMISSION$
