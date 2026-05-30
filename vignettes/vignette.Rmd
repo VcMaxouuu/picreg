@@ -6,7 +6,7 @@ author:
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 link-citations: true
 output:
-  pdf_document:
+  rmarkdown::html_vignette:
     fig_caption: yes
     toc: yes
     toc_depth: 3
@@ -543,7 +543,7 @@ pt <- phase_transition(
 plot(pt)
 ```
 ```{r phase-transition-img, echo = FALSE, out.width = "85%", fig.align = "center"}
-knitr::include_graphics("phase_transition_pic.pdf")
+knitr::include_graphics("phase_transition_pic.png")
 ```
 
 The curves report the **probability of exact support recovery**: for each
@@ -555,7 +555,7 @@ true-positive rate or the false-discovery rate.
 plot(pt, metric = "fdr")
 ```
 ```{r phase-transition-fdr-img, echo = FALSE, out.width = "85%", fig.align = "center"}
-knitr::include_graphics("phase_transition_pic_fdr.pdf")
+knitr::include_graphics("phase_transition_pic_fdr.png")
 ```
 
 ## Asymptotic behaviour of the pivotal statistic $\Lambda$
@@ -760,7 +760,7 @@ legend(
 )
 ```
 ```{r phase-transition-comp-img, echo = FALSE, out.width = "85%", fig.align = "center"}
-knitr::include_graphics("phase_transition_comparaison.pdf")
+knitr::include_graphics("phase_transition_comparaison.png")
 ```
 `picreg`'s PDB threshold is calibrated for highly probable **exact recovery** of
 the active set, while CV is calibrated for low **prediction error**.

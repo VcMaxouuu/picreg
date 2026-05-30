@@ -1,7 +1,7 @@
 Package: picreg
 Type: Package
 Title: Variable Selection using the Pivotal Information Criterion
-Version: 0.1.1
+Version: 0.1.2
 Date: 2026-05-30
 Authors@R: c(
     person("Maxime", "van Cutsem",
