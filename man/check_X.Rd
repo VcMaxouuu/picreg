@@ -2,14 +2,14 @@
 % Please edit documentation in R/prepareX.R
 \name{check_X}
 \alias{check_X}
-\title{Validate and optionally standardise the design matrix.}
+\title{Validate and optionally standardize the design matrix.}
 \usage{
 check_X(X, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
 }
 \arguments{
 \item{X}{A numeric matrix or coercible (data.frame).}
 
-\item{standardize_X}{Logical; standardise columns of \code{X}.}
+\item{standardize_X}{Logical; standardize columns of \code{X}.}
 
 \item{X_mean}{Optional pre-computed column means.}
 
@@ -20,7 +20,7 @@ A list with components \code{X}, \code{X_mean}, \code{X_std}, \code{feature_name
 (the column names of \code{X} if any, otherwise \code{NULL}).
 }
 \description{
-Standardises columns to zero mean and unit variance (population sd; \code{n} divisor)
+Standardizes columns to zero mean and unit variance (population sd; \code{n} divisor)
 when \code{standardize_X} is \code{TRUE}. When \code{X_mean} and \code{X_std} are supplied they
 are reapplied without recomputing — used at prediction time on new data.
 Column names of \code{X} (or column names of the source data frame) are captured

@@ -1,28 +1,33 @@
-## Resubmission
+## Submission
 
-This is a resubmission of 0.1.1. The previous run on the CRAN Windows
-builder reported a WARNING about the rebuilt vignette PDF being larger
-than necessary ("compacted 'vignette.pdf' from 455Kb to 155Kb"). In
-this version I have switched the vignette output from
-`pdf_document` to `rmarkdown::html_vignette`, which eliminates the
-PDF compaction issue entirely.
+This is an update of the released version 0.1.2.
 
-The fixes from the previous resubmission cycle are retained:
+The CRAN package check reported an "Additional issue (LTO)": a C++ One
+Definition Rule violation under link-time optimization. This release
+fixes it by giving the file-local helper structs in `src/fista.cpp` and
+`src/fista_cox.cpp` internal linkage (anonymous namespaces), so the
+`-Wodr` warnings no longer occur. I verified this locally by building
+with `-flto -Wodr`.
 
-* DESCRIPTION: reference written as "Sardy, van Cutsem and van de Geer
-  (2026) <doi:10.48550/arXiv.2603.04172>".
-* DESCRIPTION: acronyms (PIC, BIC, FISTA, SCAD, MCP) expanded on first
-  use.
-* cox_partial_log_likelihood.Rd: \value tag added.
+This release also includes user-facing improvements (see NEWS.md):
+
+* `coef()` now returns a sparse matrix (class "dgCMatrix"), consistent
+  with `glmnet`.
+* a `summary()` method for fitted models.
+* `intercept = FALSE` is now allowed for all families.
+* standardized input-validation error messages.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 0 notes
 
-* The spell-check flags acronyms ("FISTA", "MCP", "SCAD", "PIC") and
-  proper nouns from the reference. These are intentional.
+The only NOTE seen locally is environmental ("Skipping checking HTML
+validation" / "Skipping checking math rendering"), caused by an old
+HTML Tidy and the 'V8' package being unavailable on the local machine.
+It does not occur on CRAN's check machines.
 
 ## Test environments
 
-* local: macOS 15.0 (R 4.6.0)
+* local: macOS 15.0 (R 4.6.0), including a build with LTO enabled
+  (`-flto -Wodr`) to confirm the reported issue is resolved.
 * win-builder: R-devel and R-release

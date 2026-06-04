@@ -1,13 +1,14 @@
-test_that("pic() refuses intercept=FALSE with standardize=TRUE for non-Cox families", {
+test_that("pic() allows intercept=FALSE with standardize=TRUE (assumes centered data)", {
   set.seed(1)
   n <- 50; p <- 10
-  X <- matrix(rnorm(n * p), n, p)
-  y <- as.numeric(X[, 1] + rnorm(n))
+  X <- scale(matrix(rnorm(n * p), n, p), center = TRUE, scale = FALSE)
+  y <- as.numeric(X[, 1] + rnorm(n)); y <- y - mean(y)
 
+  # No longer an error: the user is responsible for centring when intercept = FALSE.
   expect_error(
     pic(X, y, family = "gaussian", intercept = FALSE, standardize = TRUE,
-        lambda = 0),
-    "centers X"
+        lambda_n_simu = 200L),
+    NA
   )
 })
 
@@ -19,7 +20,7 @@ test_that("pic() with intercept=TRUE, standardize=TRUE, lambda=0 matches lm()", 
 
   fit <- pic(X, y, family = "gaussian", intercept = TRUE, standardize = TRUE,
              lambda = 0, tol = 1e-10, maxit = 50000L)
-  b_pic <- coef(fit)$coefficient
+  b_pic <- as.numeric(coef(fit))
 
   df <- data.frame(y = y, X)
   b_lm <- unname(coef(lm(y ~ ., data = df)))
@@ -38,7 +39,7 @@ test_that("pic() with intercept=FALSE, standardize=FALSE, lambda=0 matches lm(y 
         lambda = 0, tol = 1e-10, maxit = 50000L)
   )
   coefs <- coef(fit)
-  b_pic <- setNames(coefs$coefficient, coefs$variable)
+  b_pic <- setNames(as.numeric(coefs), rownames(coefs))
   b_pic <- b_pic[names(b_pic) != "(Intercept)"]
 
   df <- data.frame(y = y, X)

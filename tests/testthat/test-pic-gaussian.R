@@ -48,7 +48,7 @@ test_that("predict.pic returns sensible outputs for type = link / response", {
   expect_equal(link, resp)   # Gaussian: identity link
 })
 
-test_that("coef.pic returns a 2-column data.frame with intercept first", {
+test_that("coef.pic returns a sparse (p+1) x 1 matrix with intercept first", {
   set.seed(4)
   n <- 50; p <- 10
   X <- matrix(rnorm(n * p), n, p)
@@ -57,12 +57,11 @@ test_that("coef.pic returns a 2-column data.frame with intercept first", {
   fit <- pic(X, y, family = "gaussian", lambda_n_simu = 200L)
   co  <- coef(fit)
 
-  expect_s3_class(co, "pic.coef")
-  expect_s3_class(co, "data.frame")
-  expect_equal(names(co), c("variable", "coefficient"))
-  expect_equal(nrow(co), p + 1L)
-  expect_equal(co$variable[1L], "(Intercept)")
-  expect_type(co$coefficient, "double")
+  expect_s4_class(co, "dgCMatrix")
+  expect_equal(dim(co), c(p + 1L, 1L))
+  expect_equal(rownames(co)[1L], "(Intercept)")
+  expect_equal(colnames(co), "coefficient")
+  expect_type(as.numeric(co), "double")
 })
 
 test_that("coef.pic uses column names of X when available", {
@@ -75,7 +74,7 @@ test_that("coef.pic uses column names of X when available", {
   fit <- pic(X, y, lambda_n_simu = 200L)
 
   co <- coef(fit)
-  expect_equal(co$variable[-1L], paste0("gene_", seq_len(p)))
+  expect_equal(rownames(co)[-1L], paste0("gene_", seq_len(p)))
 
   # fit$selected returns names rather than integer indices when X had
   # column names.
@@ -91,6 +90,6 @@ test_that("coef.pic falls back to V1..Vp without column names", {
 
   fit <- pic(X, y, lambda_n_simu = 200L)
   co  <- coef(fit)
-  expect_equal(co$variable[-1L], paste0("V", seq_len(p)))
+  expect_equal(rownames(co)[-1L], paste0("V", seq_len(p)))
   expect_type(fit$selected, "integer")
 })

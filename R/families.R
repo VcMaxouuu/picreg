@@ -5,8 +5,8 @@
 #'   * `g`    - mean-function link (object with `name` and callable `fn`).
 #'              `g$fn(eta)` is applied at predict time to obtain the mean
 #'              response.
-#'   * `phi`  - variance-stabilising transform (object with `name`).
-#'              Purely informational on the R side; the actual stabilisation
+#'   * `phi`  - variance-stabilizing transform (object with `name`).
+#'              Purely informational on the R side; the actual stabilization
 #'              happens inside the C++ math.
 #'
 #' Typing `fit$family` gives a one-glance summary of the model's family

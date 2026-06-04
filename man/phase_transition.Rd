@@ -129,5 +129,5 @@ plot(pt)
 }
 }
 \seealso{
-\code{\link[=plot.pic.phase_transition]{plot.pic.phase_transition()}} for visualisation.
+\code{\link[=plot.pic.phase_transition]{plot.pic.phase_transition()}} for visualization.
 }

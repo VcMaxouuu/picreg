@@ -34,12 +34,14 @@ static double bb_step_coef(const vec& coef_a, const vec& coef_b,
 }
 
 // Line search result from y_k.
+namespace {
 struct LsResult {
   vec    z_coef;
   double F_z;
   double alpha;
   bool   non_monotone;
 };
+}  // namespace
 
 static LsResult ls_from_y(const mat& X, const picr::cox::CoxData& cd,
                           const picr::Penalty& pen, double lambda_reg,
@@ -73,12 +75,14 @@ static LsResult ls_from_y(const mat& X, const picr::cox::CoxData& cd,
 }
 
 // v-branch fallback from x_k.
+namespace {
 struct VResult {
   vec    coef;
   double F_val;
   double alpha;
   char   picked;        // 'z' or 'v'
 };
+}  // namespace
 
 static VResult v_branch(const mat& X, const picr::cox::CoxData& cd,
                         const picr::Penalty& pen, double lambda_reg,

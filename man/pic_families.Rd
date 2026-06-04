@@ -10,8 +10,8 @@ Each family is a thin descriptor carrying:
 \item \code{g}    - mean-function link (object with \code{name} and callable \code{fn}).
 \code{g$fn(eta)} is applied at predict time to obtain the mean
 response.
-\item \code{phi}  - variance-stabilising transform (object with \code{name}).
-Purely informational on the R side; the actual stabilisation
+\item \code{phi}  - variance-stabilizing transform (object with \code{name}).
+Purely informational on the R side; the actual stabilization
 happens inside the C++ math.
 }
 }

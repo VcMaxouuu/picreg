@@ -1,6 +1,6 @@
-#' Pivotal Detection Boundary regularisation selector
+#' Pivotal Detection Boundary regularization selector
 #'
-#' Computes the data-driven regularisation parameter \eqn{\hat\lambda^{\rm PDB}_\alpha} 
+#' Computes the data-driven regularization parameter \eqn{\hat\lambda^{\rm PDB}_\alpha} 
 #' using the Pivotal Detection Boundary (PDB) principle. The selected value is 
 #' defined as the empirical \eqn{(1 - \alpha)} quantile of a null-distribution gradient statistic
 #' \deqn{\hat\lambda^{\rm PDB}_\alpha =q_{1-\alpha}\left(\left\|\nabla \ell_0\right\|_\infty
@@ -101,7 +101,7 @@
 #' empty support \eqn{95\%} of the time.
 #'
 #'
-#' @param X Numeric design matrix. Columns should typically be standardised
+#' @param X Numeric design matrix. Columns should typically be standardized
 #'   to zero mean and unit variance.
 #' @param family A PIC family specification. Can be either a family object
 #'   or a character string accepted by [get_family()].
@@ -110,7 +110,7 @@
 #' @param alpha Nominal tail probability used to define the quantile level.
 #' @param method One of "mc_exact", "mc_gaussian", or "analytical".
 #' @return An object of class `"pic.lambda_pdb"`.
-#' \item{value}{Selected regularisation parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}.}
+#' \item{value}{Selected regularization parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}.}
 #' \item{statistics}{Simulated null statistics used to estimate the quantile. 
 #' `NULL` for the analytical method.}
 #' \item{method}{Estimation method used.}
@@ -137,7 +137,7 @@ lambda_pdb <- function(X, family,
   mu <- colMeans(X)
   sd <- sqrt(colMeans(sweep(X, 2L, mu, "-") ^ 2))
   if (max(abs(mu)) >= 1e-4 || max(abs(sd - 1.0)) >= 1e-4) {
-    warning("lambda_pdb: design matrix X does not appear standardised; ",
+    warning("lambda_pdb: design matrix X does not appear standardized; ",
             "results may be unreliable.")
   }
 
@@ -171,7 +171,7 @@ lambda_pdb <- function(X, family,
 # Closed-form KKT threshold lambda_max = ||grad_beta L(0, beta0*)||_infty.
 # Smallest lambda that kills every coordinate for lasso (and SCAD/MCP, whose
 # derivative at 0 also equals lambda). Used as the entry point of the
-# warm-start regularisation path in `pic()`.
+# warm-start regularization path in `pic()`.
 .lambda_max <- function(X, y, family, fit_intercept) {
   if (family$name == "cox") {
     lambda_max_cox_cpp(X, y[, 1L], y[, 2L])

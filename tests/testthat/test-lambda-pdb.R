@@ -17,12 +17,12 @@ test_that("lambda_pdb() returns a scalar lambda and metadata for the three metho
   }
 })
 
-test_that("lambda_pdb warns when X is not standardised", {
+test_that("lambda_pdb warns when X is not standardized", {
   set.seed(32)
   X <- matrix(rnorm(50 * 10, mean = 5, sd = 2), 50, 10)
   expect_warning(
     lambda_pdb(X, "gaussian", n_simu = 100L, method = "analytical"),
-    "standardised"
+    "standardized"
   )
 })
 

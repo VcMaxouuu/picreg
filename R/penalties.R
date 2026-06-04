@@ -20,7 +20,7 @@
 #'        + \frac{(a\lambda - |t|)_+}{(a - 1)\lambda}
 #'          \mathbf{1}\{|t| > \lambda\}\right\}.}
 #'     Behaves like the lasso for small \eqn{|t|}, then tapers off so
-#'     large coefficients are barely penalised - yields nearly unbiased
+#'     large coefficients are barely penalized - yields nearly unbiased
 #'     estimates on strong signals.
 #'   }
 #'   \item{`"mcp"` (Minimax Concave Penalty, Zhang 2010)}{

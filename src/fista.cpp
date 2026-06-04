@@ -41,6 +41,7 @@ static double bb_step(const vec& coef_a, const vec& coef_b,
 }
 
 // Result of the line search from the extrapolated point y_k.
+namespace {
 struct LsResult {
   vec    z_coef;
   double z_int;
@@ -48,6 +49,7 @@ struct LsResult {
   double alpha;
   bool   non_monotone;
 };
+}  // namespace
 
 // Backtracking proximal line search from y_k, with descent-lemma check
 // and a non-monotone test against the running reference c_k.
@@ -96,6 +98,7 @@ static LsResult ls_from_y(const mat& X, const vec& y,
 }
 
 // Result of the v-branch fallback line search from x_k.
+namespace {
 struct VResult {
   vec    coef;
   double intercept;
@@ -103,6 +106,7 @@ struct VResult {
   double alpha;
   char   picked;        // 'z' or 'v'
 };
+}  // namespace
 
 static VResult v_branch(const mat& X, const vec& y,
                         const picr::Family& fam, const picr::Penalty& pen,

@@ -17,7 +17,7 @@ test_that("feature names from a data.frame propagate through the fit", {
 
   # coef(fit) uses the same names.
   co <- coef(fit)
-  expect_equal(co$variable[-1L], names(df))
+  expect_equal(rownames(co)[-1L], names(df))
 
   # preproc stores them.
   preproc <- attr(fit, "preproc")
@@ -33,7 +33,7 @@ test_that("matrices without colnames get V1..Vp labelling", {
   fit <- pic(X, y, lambda_n_simu = 200L)
 
   expect_type(fit$selected, "integer")
-  expect_equal(coef(fit)$variable[-1L], paste0("V", seq_len(p)))
+  expect_equal(rownames(coef(fit))[-1L], paste0("V", seq_len(p)))
   expect_null(attr(fit, "preproc")$feature_names)
 })
 

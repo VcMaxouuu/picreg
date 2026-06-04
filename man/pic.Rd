@@ -2,7 +2,7 @@
 % Please edit documentation in R/picr.R
 \name{pic}
 \alias{pic}
-\title{Sparse regression via pivotal loss and PDB lambda selection}
+\title{Sparse linear regression using the Pivotal Information Criterion.}
 \usage{
 pic(
   X,
@@ -36,7 +36,7 @@ two columns and no \code{NA}, \code{NaN}, or infinite values.}
 where \code{time} is non-negative and \code{event} is coded as \code{0} or \code{1}.}
 
 \item{family}{A character name determining the response distribution and
-the associated loss function used during optimisation. See
+the associated loss function used during optimization. See
 \strong{Details on family-specific losses} below for the exact
 objective functions associated with each family. Default \code{"gaussian"}.}
 
@@ -44,21 +44,19 @@ objective functions associated with each family. Default \code{"gaussian"}.}
 (lowercase). Default \code{"lasso"}. See \link{pic_penalties} for the precise
 form of each penalty and the role of \code{scad_a} / \code{mcp_gamma}.}
 
-\item{standardize}{Whether to standardise columns of \code{X} to zero mean and
-unit variance prior to computing the PDB regularisation parameter and
+\item{standardize}{Whether to standardize columns of \code{X} to zero mean and
+unit variance prior to computing the PDB regularization parameter and
 fitting the model. Strongly recommended for proper PDB calibration.
-When \code{TRUE}, the optimisation is performed on the standardised design
+When \code{TRUE}, the optimization is performed on the standardized design
 matrix and the stored fitted coefficients therefore correspond to the
-standardised scale. Use \code{\link[=coef.pic]{coef.pic()}} to recover coefficients on the
-original scale of \code{X}. Default is \code{TRUE}. Standardisation centres \code{X},
-so for non-Cox families it can only be combined with \code{intercept = TRUE}
-(the intercept absorbs the column-mean shift); pass
-\code{standardize = FALSE} if you really want \code{intercept = FALSE}.}
+standardized scale. Use \code{\link[=coef.pic]{coef.pic()}} to recover coefficients on the
+original scale of \code{X}. Default is \code{TRUE}. Standardization centers \code{X};
+for non-Cox families the resulting column-mean shift is absorbed by the
+intercept, so combining \code{standardize = TRUE} with \code{intercept = FALSE}
+assumes the data are already centered (see \code{intercept}).}
 
-\item{intercept}{Whether to fit an unpenalised intercept. Forced to
-\code{FALSE} for the Cox family (whose partial likelihood is invariant under
-translation of the linear predictor, so centring of \code{X} is harmless).
-For other families, \code{intercept = FALSE} requires \code{standardize = FALSE}.}
+\item{intercept}{Whether to fit an unpenalized intercept. Forced to
+\code{FALSE} for the Cox family. We assume the data has been centered if intercept = FALSE.}
 
 \item{lambda_method}{One of \code{"mc_exact"}, \code{"mc_gaussian"}, \code{"analytical"}. See
 \code{\link[=lambda_pdb]{lambda_pdb()}} for details. The default \code{"mc_exact"} is a safe choice
@@ -67,14 +65,14 @@ for small to moderate designs; for very large \eqn{n} or \eqn{p},
 cost (it amortises only one BLAS \eqn{\tt gemm}, no family-specific
 residual draws), and \code{"analytical"} is closed-form.}
 
-\item{relax}{If \code{TRUE}, run an unpenalised refit on the selected support
-after the regularisation path (debiasing).}
+\item{relax}{If \code{TRUE}, run an unpenalized refit on the selected support
+after the regularization path (debiasing).}
 
 \item{mcp_gamma}{MCP concavity parameter when \code{penalty = "mcp"}. Default 3.0.}
 
 \item{scad_a}{SCAD concavity parameter when \code{penalty = "scad"}. Default 3.7.}
 
-\item{lambda}{Optional user-supplied regularisation parameter. When \code{NULL},
+\item{lambda}{Optional user-supplied regularization parameter. When \code{NULL},
 \code{\link[=lambda_pdb]{lambda_pdb()}} is used to select it automatically. Providing \code{lambda}
 avoids recomputing the PDB calibration, which is useful for example when
 fitting several penalties (\code{"lasso"}, \code{"scad"}, \code{"mcp"}) on the same
@@ -87,7 +85,7 @@ penalty itself.}
 
 \item{tol}{FISTA convergence tolerance at the final path step.}
 
-\item{path_length}{Number of points in the warm-start regularisation
+\item{path_length}{Number of points in the warm-start regularization
 path running from \eqn{\lambda_{\max}} down to \eqn{\lambda^{\rm PDB}}.
 Default 10.}
 
@@ -112,10 +110,11 @@ For \code{family = "cox"}, the fit additionally carries:
 \item{censoring_rate}{Percentage of censored observations in the training set.}
 }
 \description{
-Fits sparse regression, classification, and survival models using a
-family-specific pivotal loss combined with a sparsity-inducing
-penalty. Supported families are Gaussian, binomial, Poisson,
-exponential, Gumbel, and Cox proportional hazards.
+Fits sparse regression, classification, and survival models built on a
+linear predictor, using a family-specific loss whose gradient at the null
+is (asymptotically) pivotal, combined with a sparsity-inducing penalty.
+Supported families are Gaussian, binomial, Poisson, exponential, Gumbel,
+and Cox proportional hazards.
 }
 \details{
 Minimises the objective function
@@ -123,7 +122,7 @@ Minimises the objective function
        \;+\; \lambda_\alpha^{\rm PDB}\,\mathrm{pen}(\beta)
        \quad\text{with}\quad
        L(\beta) = \phi\!\left(\ell_n\!\left(g(\beta)\right)\right),}
-where the regularisation parameter is selected automatically using
+where the regularization parameter is selected automatically using
 the Pivotal Detection Boundary (PDB) principle implemented in
 \code{\link[=lambda_pdb]{lambda_pdb()}}. The PDB choice is not just a substitute for
 cross-validation: by calibrating \eqn{\lambda} against a pivotal
@@ -134,70 +133,69 @@ non-zero coefficients. Here, \eqn{\phi} and \eqn{g} are
 family-specific transformations chosen so that the gradient at the
 null has a distribution free of the nuisance parameter, which is
 precisely what makes the use of \eqn{\lambda^{\rm PDB}_\alpha}
-valid. Optimisation is performed using a warm-started FISTA
-regularisation path.
+valid. Optimization is performed using a warm-started FISTA
+regularization path.
 \subsection{Details on family-specific losses}{
 
 \describe{
 \item{\code{"gaussian"}}{
-Uses \eqn{\phi(\cdot) = \sqrt{\cdot}} and \eqn{g(\cdot) = \mathrm{Id}},
-resulting in the square-root lasso objective
-\deqn{L(\beta) = \frac{\|y - X\beta\|_2}{\sqrt{n}}.}
+Uses the mean squared error for \eqn{\ell_n}, with
+\eqn{\phi(\cdot) = \sqrt{\cdot}} and \eqn{g(\cdot) = \mathrm{Id}},
+giving the square-root lasso loss
+\deqn{L(\beta) = \sqrt{\frac{1}{n}\sum_{i=1}^n
+      \left(y_i - (\beta_0 + \mathbf{x}_i^\top\beta)\right)^2}.}
+This makes the gradient at \eqn{\beta = 0} scale-free, so the PDB
+threshold needs no estimate of the noise standard deviation.
 }
 \item{\code{"binomial"}}{
-Uses a variance-stabilised transformation of the Bernoulli
-likelihood. With \eqn{\phi(\cdot) = \mathrm{Id}} and the logistic
-link \eqn{g(\eta_i) = (1 + e^{-\eta_i})^{-1}}, the loss is
+A variance-stabilized transformation of the Bernoulli likelihood.
+With \eqn{\phi(\cdot) = \mathrm{Id}} and the logistic link
+\eqn{\theta_i = g(\eta_i) = (1 + e^{-\eta_i})^{-1}}, the loss is
 \deqn{L(\beta) = \frac{1}{n}\sum_{i=1}^n
-      \left(2 y_i \sqrt{\frac{1 - g(\eta_i)}{g(\eta_i)}}
-            + 2 (1 - y_i) \sqrt{\frac{g(\eta_i)}{1 - g(\eta_i)}}\right).}
-The classical logistic link is preserved; only the loss itself
-is modified to obtain a pivotal gradient.
+      \left(2 y_i \sqrt{\frac{1 - \theta_i}{\theta_i}}
+            + 2 (1 - y_i) \sqrt{\frac{\theta_i}{1 - \theta_i}}\right).}
+The classical logistic link is preserved; only the loss itself is
+modified to obtain a pivotal gradient at the null.
 }
 \item{\code{"poisson"}}{
-As for \code{"binomial"}, uses a variance-stabilised version of the
-Poisson likelihood. With \eqn{\phi(\cdot) = \mathrm{Id}} and
-\eqn{g(\eta_i) = e^{\eta_i}}, the loss is
+The same pivotalization applied to the Poisson likelihood. With
+\eqn{\phi(\cdot) = \mathrm{Id}} and the canonical log link
+\eqn{\theta_i = g(\eta_i) = e^{\eta_i}}, the loss is
 \deqn{L(\beta) = \frac{1}{n}\sum_{i=1}^n
-      \left(\frac{2 y_i}{\sqrt{g(\eta_i)}}
-            + 2 \sqrt{g(\eta_i)}\right).}
-The standard log link is kept unchanged; the pivotality property
-is obtained through the modified loss rather than through the
-link function.
+      \left(\frac{2 y_i}{\sqrt{\theta_i}} + 2 \sqrt{\theta_i}\right).}
+The canonical log link is kept unchanged; pivotality is obtained
+through the loss rather than through the link.
 }
 \item{\code{"exponential"}}{
-Uses the standard Exponential negative log-likelihood together
-with the classical log link \eqn{g(\eta_i) = e^{\eta_i}}. The
-loss is
+Uses the standard Exponential negative log-likelihood directly (no
+transformation). With \eqn{\phi(\cdot) = \mathrm{Id}} and
+\eqn{\theta_i = g(\eta_i) = e^{\eta_i}}, the loss is
 \deqn{L(\beta) = \frac{1}{n}\sum_{i=1}^n
-      \left(\log\!\left(g(\eta_i)\right)
-            + \frac{y_i}{g(\eta_i)}\right).}
-No variance-stabilising modification is required.
+      \left(\log\theta_i + \frac{y_i}{\theta_i}\right).}
 }
 \item{\code{"gumbel"}}{
-Uses an exponentially stabilised Gumbel negative log-likelihood.
-With \eqn{\phi(\cdot) = \exp(\cdot)} and identity link
-\eqn{g(\eta_i) = \eta_i}, the loss is based on the Gumbel
-log-likelihood
-\deqn{\ell(\beta, \sigma) = \log(\sigma)
+A location-scale model with extreme-value noise. The base
+log-likelihood is
+\deqn{\ell_n(\theta, \sigma) = \log(\sigma)
       + \frac{1}{n}\sum_{i=1}^n \left(z_i + e^{-z_i}\right),
-      \qquad z_i = \frac{y_i - \eta_i}{\sigma}.}
-The optimisation objective becomes
-\deqn{L(\beta, \sigma) = \exp\!\left(\ell(\beta, \sigma)\right).}
-The scale parameter \eqn{\sigma} is re-estimated internally by
-profile maximum likelihood at each optimisation step.
+      \qquad z_i = \frac{y_i - \theta_i}{\sigma}.}
+With \eqn{\phi(\cdot) = \exp(\cdot)} and the identity link
+\eqn{\theta_i = g(\eta_i) = \eta_i}, the objective is
+\eqn{L(\beta, \sigma) = \exp(\ell_n(\theta, \sigma))}. The scale
+\eqn{\sigma} is re-estimated internally by maximum likelihood at
+every iteration; the user does not supply it.
 }
 \item{\code{"cox"}}{
-Uses a square-root-transformed Cox partial log-likelihood. With
-\eqn{\phi(\cdot) = \sqrt{\cdot}} and identity link
-\eqn{g(\eta_i) = \eta_i}, the underlying partial likelihood is
-\deqn{\ell(\beta) = -\frac{1}{n}\left[
+A square-root-transformed Cox partial log-likelihood. With
+\eqn{\phi(\cdot) = \sqrt{\cdot}} and the identity link
+\eqn{\theta_i = g(\eta_i) = \eta_i}, the objective is
+\deqn{L(\beta) = \sqrt{-\frac{1}{n}\left(
       \sum_{i=1}^n \delta_i \eta_i
       - \sum_{i=1}^n \delta_i
-        \log\!\left(\sum_{j \in R_i} e^{\eta_j}\right)\right],}
-where \eqn{\delta_i} is the event indicator and \eqn{R_i} is
-the Cox risk set at time \eqn{t_i}. The final objective is
-\deqn{L(\beta) = \sqrt{\ell(\beta)}.}
+        \log\left(\sum_{j \in R_i} e^{\eta_j}\right)\right)},}
+where \eqn{\delta_i} is the event indicator and \eqn{R_i} the risk
+set at event time \eqn{t_i}. The Breslow approximation is used for
+tied event times, and the model is always fitted without an intercept.
 }
 }
 }

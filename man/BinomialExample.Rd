@@ -24,7 +24,7 @@ remaining 45 are noise.
 }
 \details{
 Column names follow the same convention as
-\code{\link{QuickStartExample}}: active variables are labelled
+\code{\link{QuickStartExample}}: active variables are labeled
 \code{gene_1, ..., gene_5} and inactive ones \code{noise_1, ...,
 noise_45}, interleaved in random order.
 

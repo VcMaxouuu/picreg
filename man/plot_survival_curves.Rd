@@ -43,7 +43,7 @@ help distinguish them. Default \code{8}. Set to \code{0} to disable.}
 Invisibly returns \code{NULL}.
 }
 \description{
-Step-line visualisation of the output of
+Step-line visualization of the output of
 \code{\link[=predict_survival_function]{predict_survival_function()}} or \code{\link[=feature_effects_on_survival]{feature_effects_on_survival()}}:
 one survival curve per subject (or per feature value) on a common
 time grid. To keep curves distinguishable, each curve is drawn with

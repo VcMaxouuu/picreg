@@ -1,6 +1,6 @@
 # lambda_max — closed-form KKT threshold ||grad L(0, beta0*)||_inf.
 # Used to seed the warm-start path; tests its consistency with the
-# behaviour of `pic()` at lambda = lambda_max.
+# behavior of `pic()` at lambda = lambda_max.
 
 test_that("lambda_max scales as ||X^T r|| / n for the Gaussian family", {
   set.seed(100)

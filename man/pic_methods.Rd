@@ -5,6 +5,6 @@
 \title{S3 methods for fitted pic objects.}
 \description{
 The fitted object has class \code{c("pic.<family>", "pic")} —
-methods dispatch on the second class for shared behaviour
+methods dispatch on the second class for shared behavior
 and on the first class for family-specific overrides.
 }

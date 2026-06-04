@@ -1,6 +1,6 @@
-#' Validate and optionally standardise the design matrix.
+#' Validate and optionally standardize the design matrix.
 #'
-#' Standardises columns to zero mean and unit variance (population sd; `n` divisor)
+#' Standardizes columns to zero mean and unit variance (population sd; `n` divisor)
 #' when `standardize_X` is `TRUE`. When `X_mean` and `X_std` are supplied they
 #' are reapplied without recomputing — used at prediction time on new data.
 #' Column names of `X` (or column names of the source data frame) are captured
@@ -8,7 +8,7 @@
 #' annotate `fit$selected`, `coef()`, and the coefficient plot.
 #'
 #' @param X A numeric matrix or coercible (data.frame).
-#' @param standardize_X Logical; standardise columns of `X`.
+#' @param standardize_X Logical; standardize columns of `X`.
 #' @param X_mean Optional pre-computed column means.
 #' @param X_std Optional pre-computed column standard deviations.
 #' @return A list with components `X`, `X_mean`, `X_std`, `feature_names`
@@ -27,19 +27,19 @@ check_X <- function(X,
   feature_names <- colnames(X)
 
   if (!is.numeric(X)) {
-    stop("X must contain only numeric values.")
+    stop("`X` must contain only numeric values.", call. = FALSE)
   }
   if (nrow(X) == 0L) {
-    stop("X must have at least one row.")
+    stop("`X` must have at least one row.", call. = FALSE)
   }
   if (ncol(X) < 2L) {
-    stop("X must have at least 2 columns.")
+    stop("`X` must have at least 2 columns.", call. = FALSE)
   }
 
   storage.mode(X) <- "double"
 
   if (any(!is.finite(X))) {
-    stop("X contains NA, NaN, or Inf values.")
+    stop("`X` contains NA, NaN, or Inf values.", call. = FALSE)
   }
 
   # Fit-time only: pre-compute a small set of representative values per
@@ -97,15 +97,15 @@ check_y <- function(y,
                     y_kind = "continuous") {
   if (y_kind == "survival") {
     if (!is.matrix(y) || ncol(y) != 2L)
-      stop("Survival y must be a 2-column matrix (time, event).")
+      stop("Survival `y` must be a 2-column matrix (time, event).", call. = FALSE)
     if (any(!is.finite(y)))
-      stop("y contains NA, NaN, or Inf values.")
+      stop("`y` contains NA, NaN, or Inf values.", call. = FALSE)
     if (!is.null(n_samples) && nrow(y) != n_samples)
-      stop("Length of y does not match the number of rows in X.")
+      stop("Length of `y` does not match the number of rows in `X`.", call. = FALSE)
     if (any(y[, 1L] < 0))
-      stop("Survival times must be non-negative.")
+      stop("Survival times must be non-negative.", call. = FALSE)
     if (!all(unique(y[, 2L]) %in% c(0, 1)))
-      stop("Survival event indicators must be 0 or 1.")
+      stop("Survival event indicators must be 0 or 1.", call. = FALSE)
     storage.mode(y) <- "double"
     return(y)
   }
@@ -113,25 +113,25 @@ check_y <- function(y,
   if (is.matrix(y) && (ncol(y) == 1L || nrow(y) == 1L))
     y <- as.numeric(y)
   if (!is.numeric(y) || !is.null(dim(y)))
-    stop("y must be a 1-D numeric vector.")
+    stop("`y` must be a 1-D numeric vector.", call. = FALSE)
   if (any(!is.finite(y)))
-    stop("y contains NA, NaN, or Inf values.")
+    stop("`y` contains NA, NaN, or Inf values.", call. = FALSE)
   if (!is.null(n_samples) && length(y) != n_samples)
-    stop("Length of y does not match the number of rows in X.")
+    stop("Length of `y` does not match the number of rows in `X`.", call. = FALSE)
   
   if (y_kind == "positive") {
     if (any(y < 0))
-      stop("y must be non-negative.")
+      stop("`y` must be non-negative.", call. = FALSE)
     return(as.numeric(y))
   }
   if (y_kind == "binary") {
     if (!all(unique(y) %in% c(0, 1)))
-      stop("Binary y must contain only 0 and 1.")
+      stop("Binary `y` must contain only 0 and 1.", call. = FALSE)
     return(as.integer(y))
   }
   if (y_kind == "continuous")
     return(as.numeric(y))
-  stop(sprintf("Unknown y_kind '%s'.", y_kind))
+  stop(sprintf("Unknown `y_kind` '%s'.", y_kind), call. = FALSE)
 }
 
 #' Joint validation/preprocessing of `(X, y)`.

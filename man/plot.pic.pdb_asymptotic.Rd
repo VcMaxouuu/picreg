@@ -2,7 +2,7 @@
 % Please edit documentation in R/plots.R
 \name{plot.pic.pdb_asymptotic}
 \alias{plot.pic.pdb_asymptotic}
-\title{Plot of the PDB asymptotic behaviour.}
+\title{Plot of the PDB asymptotic behavior.}
 \usage{
 \method{plot}{pic.pdb_asymptotic}(x, breaks = 40L, ...)
 }

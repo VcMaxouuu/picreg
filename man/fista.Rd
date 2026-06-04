@@ -23,7 +23,7 @@ fista(
 )
 }
 \arguments{
-\item{X}{Standardised design matrix.}
+\item{X}{Standardized design matrix.}
 
 \item{y}{Response vector (length n).}
 
@@ -31,9 +31,9 @@ fista(
 
 \item{penalty}{A pic penalty object (provides \code{name}, \code{params}).}
 
-\item{lambda_reg}{Regularisation parameter.}
+\item{lambda_reg}{Regularization parameter.}
 
-\item{fit_intercept}{Whether to update an unpenalised intercept.}
+\item{fit_intercept}{Whether to update an unpenalized intercept.}
 
 \item{rel_tol}{Relative gradient-mapping tolerance.}
 

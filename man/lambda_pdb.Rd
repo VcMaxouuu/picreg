@@ -2,7 +2,7 @@
 % Please edit documentation in R/lambda-pdb.R
 \name{lambda_pdb}
 \alias{lambda_pdb}
-\title{Pivotal Detection Boundary regularisation selector}
+\title{Pivotal Detection Boundary regularization selector}
 \usage{
 lambda_pdb(
   X,
@@ -13,7 +13,7 @@ lambda_pdb(
 )
 }
 \arguments{
-\item{X}{Numeric design matrix. Columns should typically be standardised
+\item{X}{Numeric design matrix. Columns should typically be standardized
 to zero mean and unit variance.}
 
 \item{family}{A PIC family specification. Can be either a family object
@@ -28,7 +28,7 @@ methods. Ignored when \code{method = "analytical"}.}
 }
 \value{
 An object of class \code{"pic.lambda_pdb"}.
-\item{value}{Selected regularisation parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}.}
+\item{value}{Selected regularization parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}.}
 \item{statistics}{Simulated null statistics used to estimate the quantile.
 \code{NULL} for the analytical method.}
 \item{method}{Estimation method used.}
@@ -36,7 +36,7 @@ An object of class \code{"pic.lambda_pdb"}.
 \item{n_simu}{Number of Monte Carlo simulations.}
 }
 \description{
-Computes the data-driven regularisation parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}
+Computes the data-driven regularization parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}
 using the Pivotal Detection Boundary (PDB) principle. The selected value is
 defined as the empirical \eqn{(1 - \alpha)} quantile of a null-distribution gradient statistic
 \deqn{\hat\lambda^{\rm PDB}_\alpha =q_{1-\alpha}\left(\left\|\nabla \ell_0\right\|_\infty

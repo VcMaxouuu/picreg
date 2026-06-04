@@ -1,0 +1,87 @@
+url: https://vcmaxouuu.github.io/picreg/
+template:
+  bootstrap: 5
+  light-switch: yes
+  math-rendering: katex
+navbar:
+  structure:
+    left:
+    - getstarted
+    - paradigm
+    - reference
+    - articles
+    right:
+    - search
+    - github
+    - lightswitch
+  components:
+    getstarted:
+      text: Get started
+      href: articles/vignette.html
+    paradigm:
+      text: The PIC paradigm
+      href: articles/pic-paradigm.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    articles:
+      text: Articles
+      href: articles/publications.html
+    github:
+      icon: fab fa-github
+      href: https://github.com/VcMaxouuu/picreg
+      aria-label: GitHub
+reference:
+- title: Model fitting
+  desc: The single high-level entry point.
+  contents: pic
+- title: Methods for fitted models
+  desc: S3 methods shared across all families.
+  contents:
+  - summary.pic
+  - coef.pic
+  - predict.pic
+  - plot.pic
+  - assess
+- title: Families and penalties
+  contents:
+  - pic_families
+  - pic_penalties
+- title: Choosing the penalty level
+  desc: The Pivotal Detection Boundary selector and its diagnostics.
+  contents:
+  - lambda_pdb
+  - pdb_summary
+  - pdb_asymptotic
+  - plot.pic.lambda_pdb
+  - plot.pic.pdb_asymptotic
+- title: Variable-selection diagnostics
+  contents:
+  - phase_transition
+  - plot.pic.phase_transition
+- title: Survival utilities
+  desc: Helpers for the Cox proportional-hazards family.
+  contents:
+  - predict_survival_function
+  - feature_effects_on_survival
+  - plot_baseline
+  - plot_survival_curves
+  - baseline_functions
+  - concordance_index
+  - cox_partial_log_likelihood
+- title: Datasets
+  contents:
+  - QuickStartExample
+  - BinomialExample
+  - CoxExample
+- title: Internal
+  desc: Overview pages and print methods.
+  contents:
+  - pic_methods
+  - pic_plots
+  - pic_survival
+  - print.pic.family
+  - print.pic.pdb_asymptotic
+  - print.pic.phase_transition
+  - print.summary.pic
+

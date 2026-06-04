@@ -84,7 +84,7 @@
 #' \item{config}{A list of all configuration arguments for downstream plotting / reporting.}
 #' \item{call}{The call.}
 #'
-#' @seealso [plot.pic.phase_transition()] for visualisation.
+#' @seealso [plot.pic.phase_transition()] for visualization.
 #'
 #' @examples
 #' \donttest{
@@ -336,15 +336,15 @@ print.pic.phase_transition <- function(x, ...) {
 }
 
 
-#' Asymptotic behaviour of the PDB null distribution.
+#' Asymptotic behavior of the PDB null distribution.
 #'
-#' For each `n` in `n_grid`, draws a standardised Gaussian design matrix
+#' For each `n` in `n_grid`, draws a standardized Gaussian design matrix
 #' of shape `(n, p)` and computes the null gradient-norm statistic via
 #' the three available selectors: `"mc_exact"`, `"mc_gaussian"`, and
 #' `"analytical"`. Stores the simulated Monte Carlo statistics and the
 #' three resulting \eqn{\hat\lambda} values per `n`.
 #'
-#' The intended use is to **visualise the convergence** of the exact
+#' The intended use is to **visualize the convergence** of the exact
 #' family-specific null distribution to the Gaussian approximation as
 #' `n` grows — i.e., to check empirically that `mc_gaussian` is a valid
 #' substitute for `mc_exact` in the asymptotic regime.
@@ -368,7 +368,7 @@ print.pic.phase_transition <- function(x, ...) {
 #'       under each selector at each `n`.}
 #'  \item{call}{The call.}
 #'
-#' @seealso [plot.pic.pdb_asymptotic()] for visualisation.
+#' @seealso [plot.pic.pdb_asymptotic()] for visualization.
 #'
 #' @examples
 #' as_ <- pdb_asymptotic(n_grid = c(50, 200, 1000),
@@ -416,7 +416,7 @@ pdb_asymptotic <- function(
     if (verbose)
       message(sprintf("[n = %d, p = %d] running pdb_asymptotic...", nk, p))
 
-    # Standardised Gaussian design (n divisor, matching check_X).
+    # Standardized Gaussian design (n divisor, matching check_X).
     X  <- matrix(stats::rnorm(nk * p), nk, p)
     mu <- colMeans(X)
     X  <- sweep(X, 2L, mu, "-", check.margin = FALSE)

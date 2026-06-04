@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{A fitted \code{pic} object.}
 
-\item{standardized}{Logical; if \code{TRUE}, plot the standardised
+\item{standardized}{Logical; if \code{TRUE}, plot the standardized
 coefficients used internally during fitting. If \code{FALSE}, use the
 coefficients on the original scale of \code{X}. Default \code{TRUE}.}
 

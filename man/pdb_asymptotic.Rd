@@ -2,7 +2,7 @@
 % Please edit documentation in R/diagnostics.R
 \name{pdb_asymptotic}
 \alias{pdb_asymptotic}
-\title{Asymptotic behaviour of the PDB null distribution.}
+\title{Asymptotic behavior of the PDB null distribution.}
 \usage{
 pdb_asymptotic(
   n_grid,
@@ -40,14 +40,14 @@ under each selector at each \code{n}.}
 \item{call}{The call.}
 }
 \description{
-For each \code{n} in \code{n_grid}, draws a standardised Gaussian design matrix
+For each \code{n} in \code{n_grid}, draws a standardized Gaussian design matrix
 of shape \verb{(n, p)} and computes the null gradient-norm statistic via
 the three available selectors: \code{"mc_exact"}, \code{"mc_gaussian"}, and
 \code{"analytical"}. Stores the simulated Monte Carlo statistics and the
 three resulting \eqn{\hat\lambda} values per \code{n}.
 }
 \details{
-The intended use is to \strong{visualise the convergence} of the exact
+The intended use is to \strong{visualize the convergence} of the exact
 family-specific null distribution to the Gaussian approximation as
 \code{n} grows — i.e., to check empirically that \code{mc_gaussian} is a valid
 substitute for \code{mc_exact} in the asymptotic regime.
@@ -58,5 +58,5 @@ as_ <- pdb_asymptotic(n_grid = c(50, 200, 1000),
 plot(as_)
 }
 \seealso{
-\code{\link[=plot.pic.pdb_asymptotic]{plot.pic.pdb_asymptotic()}} for visualisation.
+\code{\link[=plot.pic.pdb_asymptotic]{plot.pic.pdb_asymptotic()}} for visualization.
 }

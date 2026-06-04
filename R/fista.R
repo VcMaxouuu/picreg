@@ -10,12 +10,12 @@
 #' a C++ implementation; the family / penalty registries throw on any
 #' other input upstream.
 #'
-#' @param X Standardised design matrix.
+#' @param X Standardized design matrix.
 #' @param y Response vector (length n).
 #' @param family A pic family object (provides `name`).
 #' @param penalty A pic penalty object (provides `name`, `params`).
-#' @param lambda_reg Regularisation parameter.
-#' @param fit_intercept Whether to update an unpenalised intercept.
+#' @param lambda_reg Regularization parameter.
+#' @param fit_intercept Whether to update an unpenalized intercept.
 #' @param rel_tol Relative gradient-mapping tolerance.
 #' @param step_size_init Initial step size.
 #' @param max_iter Hard cap on outer iterations.

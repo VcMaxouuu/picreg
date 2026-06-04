@@ -2,7 +2,7 @@
 % Please edit documentation in R/survival.R
 \name{cox_partial_log_likelihood}
 \alias{cox_partial_log_likelihood}
-\title{Breslow partial log-likelihood (negative, normalised by \code{n}).}
+\title{Breslow partial log-likelihood (negative, normalized by \code{n}).}
 \usage{
 cox_partial_log_likelihood(times, events, predictions)
 }
@@ -15,9 +15,9 @@ cox_partial_log_likelihood(times, events, predictions)
 }
 \value{
 A numeric scalar: the negative Breslow partial log-likelihood
-for the Cox proportional-hazards model, normalised by the sample
+for the Cox proportional-hazards model, normalized by the sample
 size \code{n}. Lower values indicate a better fit.
 }
 \description{
-Breslow partial log-likelihood (negative, normalised by \code{n}).
+Breslow partial log-likelihood (negative, normalized by \code{n}).
 }

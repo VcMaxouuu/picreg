@@ -16,7 +16,7 @@ NULL
 # ---- shared style ---------------------------------------------------------
 #
 # Internal helpers used by every plot method to keep the visual contract
-# uniform. The accent colour is reserved for *one* element per plot: the
+# uniform. The accent color is reserved for *one* element per plot: the
 # value the user should look at first.
 
 .pic_accent <- "#08306B"   # dark navy - sparing accent
@@ -78,7 +78,7 @@ NULL
 #' segment from zero to its fitted value.
 #'
 #' @param x A fitted `pic` object.
-#' @param standardized Logical; if `TRUE`, plot the standardised
+#' @param standardized Logical; if `TRUE`, plot the standardized
 #'   coefficients used internally during fitting. If `FALSE`, use the 
 #'   coefficients on the original scale of `X`. Default `TRUE`.
 #' @param max_features Optional cap on the number of features displayed
@@ -89,9 +89,10 @@ NULL
 #' @export
 plot.pic <- function(x, standardized = TRUE, max_features = NULL, ...) {
   co <- coef.pic(x, standardized = standardized)
-  # Drop the intercept row; build a named vector for downstream plotting.
-  feat <- co[co$variable != "(Intercept)", , drop = FALSE]
-  beta <- setNames(feat$coefficient, feat$variable)
+  # Dense named vector, then drop the intercept row for downstream plotting.
+  cv <- as.numeric(co)
+  names(cv) <- rownames(co)
+  beta <- cv[names(cv) != "(Intercept)"]
   p_total <- length(beta)
   nz <- which(beta != 0)
   if (length(nz) == 0L) {
@@ -120,7 +121,7 @@ plot.pic <- function(x, standardized = TRUE, max_features = NULL, ...) {
     NULL,
     xlim = xlim,
     ylim = c(0.5, K + 0.5),
-    xlab = if (standardized) "coefficient (standardised)" else "coefficient",
+    xlab = if (standardized) "coefficient (standardized)" else "coefficient",
     ylab = "",
     yaxt = "n",
     axes = FALSE,
@@ -238,7 +239,7 @@ plot_baseline <- function(model) {
 
 #' Plot subject-specific Cox survival curves.
 #'
-#' Step-line visualisation of the output of
+#' Step-line visualization of the output of
 #' [predict_survival_function()] or [feature_effects_on_survival()]:
 #' one survival curve per subject (or per feature value) on a common
 #' time grid. To keep curves distinguishable, each curve is drawn with
@@ -308,7 +309,7 @@ plot_survival_curves <- function(sf,
   .pic_axes()
 
   # Sparse markers at common time positions, one shape per curve. They
-  # disambiguate curves even when colours print poorly (BW, low contrast).
+  # disambiguate curves even when colors print poorly (BW, low contrast).
   if (isTRUE(n_marks > 0L) && length(sf$time) >= 2L) {
     n_marks <- min(as.integer(n_marks), length(sf$time))
     mark_idx <- unique(round(seq(1, length(sf$time), length.out = n_marks)))
@@ -454,7 +455,7 @@ plot.pic.phase_transition <- function(
 
 # ---- PDB asymptotic -------------------------------------------------------
 
-#' Plot of the PDB asymptotic behaviour.
+#' Plot of the PDB asymptotic behavior.
 #'
 #' Multi-panel histogram comparison of the simulated null gradient-norm
 #' statistic under the `"mc_exact"` (light grey fill) and `"mc_gaussian"`

@@ -36,11 +36,11 @@ concordance_index <- function(times, events, predictions) {
   score / n_comp
 }
 
-#' Breslow partial log-likelihood (negative, normalised by `n`).
+#' Breslow partial log-likelihood (negative, normalized by `n`).
 #'
 #' @inheritParams concordance_index
 #' @return A numeric scalar: the negative Breslow partial log-likelihood
-#'   for the Cox proportional-hazards model, normalised by the sample
+#'   for the Cox proportional-hazards model, normalized by the sample
 #'   size `n`. Lower values indicate a better fit.
 #' @export
 cox_partial_log_likelihood <- function(times, events, predictions) {

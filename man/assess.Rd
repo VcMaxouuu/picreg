@@ -45,7 +45,7 @@ The metrics depend on the family:
 negative log-likelihood with a moment estimate of the scale
 parameter \eqn{\hat\sigma = \mathrm{sd}(y - \hat\eta)\sqrt{6}/\pi}.}
 \item{\code{"cox"}}{Harrell's C-index and the Breslow partial
-log-likelihood (negative, normalised by \code{n}).}
+log-likelihood (negative, normalized by \code{n}).}
 }
 
 When \code{true_features} is non-\code{NULL}, four support-recovery metrics

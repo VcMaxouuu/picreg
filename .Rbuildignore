@@ -8,9 +8,14 @@
 ^src/.*\.so$
 ^src/.*\.dll$
 ^cran-comments\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
 ^bench$
 ^.*\.tar\.gz$
 ^picreg-manual\.pdf$
 ^\.Rd2pdf.*$
 ^.*\.Rcheck$
 ^CRAN-SUBMISSION$
+^\.github$
+^vignettes/articles$

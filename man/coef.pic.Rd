@@ -10,29 +10,32 @@
 \item{object}{A fitted \code{pic} object.}
 
 \item{standardized}{Logical; if \code{TRUE}, return the coefficients on the
-standardised scale used internally during fitting. Default \code{FALSE}
+standardized scale used internally during fitting. Default \code{FALSE}
 (return coefficients on the original scale of \code{X}).}
 
 \item{...}{Unused; present for S3 method consistency.}
 }
 \value{
-A \code{data.frame} with columns \code{variable} (character) and
-\code{coefficient} (numeric), of length \code{p + 1} (intercept + features).
+A sparse \code{(p + 1)} by \code{1} matrix of class \code{"dgCMatrix"}, with row
+names \verb{c("(Intercept)", <variables>)} and column name \code{"coefficient"}.
+Use \code{as.numeric()} to obtain a plain numeric vector, or
+\code{which(coef(fit) != 0)} to list the selected entries.
 }
 \description{
-Returns a two-column data frame with the variable name in the first
-column (\code{variable}) and the fitted coefficient in the second
-(\code{coefficient}). The first row is always the intercept, labelled
-\code{"(Intercept)"}; when no intercept was fitted its value is \code{0}.
-Variable names are taken from the column names of \code{X} if any were
-supplied (matrix \code{colnames(X)} or data-frame column names), and
-otherwise default to \verb{V1, ..., Vp}.
+Returns the fitted coefficients as a one-column \strong{sparse matrix} of class
+\code{"dgCMatrix"} (from the \pkg{Matrix} package), mirroring the output of
+\code{coef()} for \pkg{glmnet}. The first row is the intercept, labeled
+\code{"(Intercept)"} (value \code{0} when no intercept was fitted); the remaining
+rows are the predictors. Row names are taken from the column names of \code{X}
+when available (matrix \code{colnames(X)} or data-frame column names) and
+otherwise default to \verb{V1, ..., Vp}. Zero coefficients are stored implicitly
+and printed as \code{"."}, which keeps the display compact in high dimensions.
 }
 \details{
-Internally the model is fitted on a standardised design matrix, so the
-raw coefficients live on the standardised scale. By default this method
+Internally the model is fitted on a standardized design matrix, so the
+raw coefficients live on the standardized scale. By default this method
 rescales them back to the \strong{original scale} of \code{X} — the values to
-plug into the un-standardised design for prediction — via
+plug into the un-standardized design for prediction — via
 \deqn{beta\_orig = beta / s \quad intercept\_orig = intercept - sum(m * beta\_orig)}
 where \code{m} and \code{s} are the column mean and standard deviation. Pass
 \code{standardized = TRUE} to skip the rescaling and return the raw fit
