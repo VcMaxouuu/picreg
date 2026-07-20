@@ -86,34 +86,12 @@ baseline_functions <- function(times, events, predictions) {
   out
 }
 
-#' Survival curves for new data from a fitted Cox pic model.
-#'
-#' @param object A fitted `pic.cox` model.
-#' @param newx New design matrix (rows = subjects).
-#' @return A list with `time` (length `K`) and `survival` (matrix `K x m`,
-#'   one column per subject).
-#' @export
-predict_survival_function <- function(object, newx) {
-  if (!inherits(object, "pic.cox"))
-    stop("predict_survival_function() is only defined for pic.cox models.")
-  if (is.null(object$baseline_survival))
-    stop("Baseline survival not stored on the fit; was the model fitted?")
-
-  preproc <- attr(object, "preproc")
-  eta <- predict(object, newx, type = "link")
-  S0  <- object$baseline_survival$survival
-  t   <- object$baseline_survival$time
-  surv <- outer(S0, exp(eta), `^`)
-  list(time = t, survival = surv)
-}
-
-
 #' Effect of one feature on the Cox survival curve.
 #'
 #' Builds the family of survival curves obtained by varying a single
 #' covariate while holding the others at their column means. The
-#' returned object has the same shape as [predict_survival_function()],
-#' so it composes directly with [plot_survival_curves()].
+#' returned object has the same shape as [predict.pic()] with
+#' `type = "survival"`, so it composes directly with [plot_survival_curves()].
 #'
 #' Both the per-column mean row and a default grid of representative
 #' values (used when `values = NULL`) are cached on the fit by `pic()`
@@ -138,7 +116,7 @@ predict_survival_function <- function(object, newx) {
 #'   `"<feature_name> = <value>"` and are picked up automatically by
 #'   [plot_survival_curves()] for the legend.
 #'
-#' @seealso [predict_survival_function()], [plot_survival_curves()].
+#' @seealso [predict.pic()], [plot_survival_curves()].
 #' @export
 feature_effects_on_survival <- function(object, idx, values = NULL) {
   if (!inherits(object, "pic.cox"))
@@ -194,7 +172,7 @@ feature_effects_on_survival <- function(object, idx, values = NULL) {
   # First call seeds the time grid; remaining values reuse the grid.
   Xv <- mean_row
   Xv[1L, idx_int] <- values[1L]
-  sf1 <- predict_survival_function(object, Xv)
+  sf1 <- predict(object, Xv, type = "survival")
 
   surv <- matrix(0.0, nrow = length(sf1$time), ncol = length(values))
   surv[, 1L] <- sf1$survival[, 1L]
@@ -202,7 +180,7 @@ feature_effects_on_survival <- function(object, idx, values = NULL) {
   if (length(values) > 1L) {
     for (k in 2:length(values)) {
       Xv[1L, idx_int] <- values[k]
-      sfk <- predict_survival_function(object, Xv)
+      sfk <- predict(object, Xv, type = "survival")
       surv[, k] <- sfk$survival[, 1L]
     }
   }

@@ -240,13 +240,13 @@ plot_baseline <- function(model) {
 #' Plot subject-specific Cox survival curves.
 #'
 #' Step-line visualization of the output of
-#' [predict_survival_function()] or [feature_effects_on_survival()]:
+#' [predict.pic()] with `type = "survival"` or [feature_effects_on_survival()]:
 #' one survival curve per subject (or per feature value) on a common
 #' time grid. To keep curves distinguishable, each curve is drawn with
 #' its own line type and a sparse set of marker glyphs is overlaid at
 #' regular time points.
 #'
-#' @param sf A list as returned by [predict_survival_function()] or
+#' @param sf A list as returned by [predict.pic()] with `type = "survival"` or
 #'   [feature_effects_on_survival()], with components `time` (length
 #'   `K`) and `survival` (matrix `K x m`, one column per curve).
 #' @param subjects Optional integer vector selecting which columns of
@@ -275,7 +275,7 @@ plot_survival_curves <- function(sf,
                                  ...) {
   if (!is.list(sf) || is.null(sf$time) || is.null(sf$survival))
     stop("`sf` must be a list with components `time` and `survival`, ",
-         "typically the output of predict_survival_function().")
+         "typically the output of predict(object, newx, type = 'survival').")
 
   S <- as.matrix(sf$survival)
   m <- ncol(S)

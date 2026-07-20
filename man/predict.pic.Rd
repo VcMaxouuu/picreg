@@ -4,19 +4,23 @@
 \alias{predict.pic}
 \title{Linear predictor / response prediction for a pic fit.}
 \usage{
-\method{predict}{pic}(object, newx, type = c("response", "link", "class"), ...)
+\method{predict}{pic}(object, newx, type = c("response", "link", "class", "survival"), ...)
 }
 \arguments{
 \item{object}{A fitted \code{pic} object.}
 
 \item{newx}{Matrix of new values at which predictions are to be made.}
 
-\item{type}{\code{"link"} (linear predictor) or \code{"response"} (default; family \code{g}-link applied).}
+\item{type}{\code{"link"} (linear predictor), \code{"response"} (default; family
+\code{g}-link applied), \code{"class"} (binomial only), or \code{"survival"} (Cox only;
+returns a list with components \code{time} and \code{survival}).}
 
 \item{...}{Unused; present for S3 method consistency.}
 }
 \value{
-A numeric vector.
+A numeric vector for types \code{"link"}, \code{"response"}, and \code{"class"}.
+For \code{type = "survival"}, a list with \code{time} (length \code{K}) and \code{survival}
+(matrix \verb{K x m}, one column per subject).
 }
 \description{
 Linear predictor / response prediction for a pic fit.

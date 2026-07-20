@@ -29,7 +29,7 @@ test_that("concordance_index returns a scalar in [0, 1]", {
   expect_true(ci >= 0 && ci <= 1)
 })
 
-test_that("predict_survival_function returns time and survival of the right shape", {
+test_that("predict(type='survival') returns time and survival of the right shape", {
   set.seed(43)
   n <- 80; p <- 10
   X <- matrix(rnorm(n * p), n, p)
@@ -42,7 +42,7 @@ test_that("predict_survival_function returns time and survival of the right shap
   fit <- pic(X, y, family = "cox", lambda_n_simu = 200L)
 
   newx <- X[1L:5L, , drop = FALSE]
-  sf <- predict_survival_function(fit, newx)
+  sf <- predict(fit, newx, type = "survival")
   expect_true(is.list(sf))
   expect_true(all(c("time", "survival") %in% names(sf)))
   expect_equal(ncol(sf$survival), 5L)

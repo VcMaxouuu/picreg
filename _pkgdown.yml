@@ -62,7 +62,6 @@ reference:
 - title: Survival utilities
   desc: Helpers for the Cox proportional-hazards family.
   contents:
-  - predict_survival_function
   - feature_effects_on_survival
   - plot_baseline
   - plot_survival_curves

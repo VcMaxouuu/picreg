@@ -1,8 +1,8 @@
 # feature_effects_on_survival: only needs the fit (preproc cache).
-# Also covers the predict_survival_function output shape and the
+# Also covers the predict(type='survival') output shape and the
 # composition with plot_survival_curves().
 
-test_that("feature_effects_on_survival composes with predict_survival_function", {
+test_that("feature_effects_on_survival composes with predict(type='survival')", {
   set.seed(401)
   data(CoxExample)
   fit <- pic(CoxExample$X, CoxExample$y,
@@ -45,13 +45,13 @@ test_that("feature_effects_on_survival rejects non-selected features", {
   )
 })
 
-test_that("predict_survival_function returns a list of (time, survival)", {
+test_that("predict(type='survival') returns a list of (time, survival)", {
   set.seed(404)
   data(CoxExample)
   fit <- pic(CoxExample$X, CoxExample$y,
              family = "cox", lambda_n_simu = 200L)
 
-  sf <- predict_survival_function(fit, newx = CoxExample$X[1:3, ])
+  sf <- predict(fit, newx = CoxExample$X[1:3, ], type = "survival")
   expect_named(sf, c("time", "survival"))
   expect_equal(ncol(sf$survival), 3L)
   expect_equal(nrow(sf$survival), length(sf$time))
@@ -62,7 +62,7 @@ test_that("plot_survival_curves runs without error", {
   data(CoxExample)
   fit <- pic(CoxExample$X, CoxExample$y,
              family = "cox", lambda_n_simu = 200L)
-  sf <- predict_survival_function(fit, newx = CoxExample$X[1:4, ])
+  sf <- predict(fit, newx = CoxExample$X[1:4, ], type = "survival")
 
   tmp <- tempfile(fileext = ".pdf")
   pdf(tmp); on.exit(unlink(tmp), add = TRUE)

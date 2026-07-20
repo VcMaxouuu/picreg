@@ -29,8 +29,8 @@ Column names of \code{survival} are formatted as
 \description{
 Builds the family of survival curves obtained by varying a single
 covariate while holding the others at their column means. The
-returned object has the same shape as \code{\link[=predict_survival_function]{predict_survival_function()}},
-so it composes directly with \code{\link[=plot_survival_curves]{plot_survival_curves()}}.
+returned object has the same shape as \code{\link[=predict.pic]{predict.pic()}} with
+\code{type = "survival"}, so it composes directly with \code{\link[=plot_survival_curves]{plot_survival_curves()}}.
 }
 \details{
 Both the per-column mean row and a default grid of representative
@@ -42,5 +42,5 @@ unique values of the column when there are at most five of them
 equispaced empirical quantiles (\code{0}, \code{1/3}, \code{2/3}, \code{1}) otherwise.
 }
 \seealso{
-\code{\link[=predict_survival_function]{predict_survival_function()}}, \code{\link[=plot_survival_curves]{plot_survival_curves()}}.
+\code{\link[=predict.pic]{predict.pic()}}, \code{\link[=plot_survival_curves]{plot_survival_curves()}}.
 }

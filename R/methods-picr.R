@@ -11,12 +11,16 @@ NULL
 #'
 #' @param object A fitted `pic` object.
 #' @param newx Matrix of new values at which predictions are to be made.
-#' @param type `"link"` (linear predictor) or `"response"` (default; family `g`-link applied).
+#' @param type `"link"` (linear predictor), `"response"` (default; family
+#'   `g`-link applied), `"class"` (binomial only), or `"survival"` (Cox only;
+#'   returns a list with components `time` and `survival`).
 #' @param ... Unused; present for S3 method consistency.
-#' @return A numeric vector.
+#' @return A numeric vector for types `"link"`, `"response"`, and `"class"`.
+#'   For `type = "survival"`, a list with `time` (length `K`) and `survival`
+#'   (matrix `K x m`, one column per subject).
 #' @export
 predict.pic <- function(object, newx,
-                        type = c("response", "link", "class"),
+                        type = c("response", "link", "class", "survival"),
                         ...) {
   type <- match.arg(type)
   preproc <- attr(object, "preproc")
@@ -35,6 +39,16 @@ predict.pic <- function(object, newx,
       stop("type = 'class' is only defined for binomial fits.")
     p <- object$family$g$fn(eta)
     return(as.integer(p >= 0.5))
+  }
+  if (type == "survival") {
+    if (!inherits(object, "pic.cox"))
+      stop("type = 'survival' is only defined for Cox fits.")
+    if (is.null(object$baseline_survival))
+      stop("Baseline survival not stored on the fit; was the model fitted?")
+    S0  <- object$baseline_survival$survival
+    t   <- object$baseline_survival$time
+    surv <- outer(S0, exp(eta), `^`)
+    return(list(time = t, survival = surv))
   }
   # type == "response"
   object$family$g$fn(eta)

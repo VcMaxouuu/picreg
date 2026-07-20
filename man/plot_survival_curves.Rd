@@ -15,7 +15,7 @@ plot_survival_curves(
 )
 }
 \arguments{
-\item{sf}{A list as returned by \code{\link[=predict_survival_function]{predict_survival_function()}} or
+\item{sf}{A list as returned by \code{\link[=predict.pic]{predict.pic()}} with \code{type = "survival"} or
 \code{\link[=feature_effects_on_survival]{feature_effects_on_survival()}}, with components \code{time} (length
 \code{K}) and \code{survival} (matrix \verb{K x m}, one column per curve).}
 
@@ -44,7 +44,7 @@ Invisibly returns \code{NULL}.
 }
 \description{
 Step-line visualization of the output of
-\code{\link[=predict_survival_function]{predict_survival_function()}} or \code{\link[=feature_effects_on_survival]{feature_effects_on_survival()}}:
+\code{\link[=predict.pic]{predict.pic()}} with \code{type = "survival"} or \code{\link[=feature_effects_on_survival]{feature_effects_on_survival()}}:
 one survival curve per subject (or per feature value) on a common
 time grid. To keep curves distinguishable, each curve is drawn with
 its own line type and a sparse set of marker glyphs is overlaid at

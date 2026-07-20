@@ -158,7 +158,7 @@ coef(fit)                          # original scale
 ```
 
 ## Predicting on new data
-The user can make predictions from the fitted object using the `predict()` function. The primary argument is `newx`, a matrix of values for `X` at which predictions are desired. Two types are universally available: `"link"` (the linear predictor $X\boldsymbol{\beta} + \beta_0$) and `"response"` (the mean response $g(\eta)$). In the Gaussian case of course (since $g$ is the identity), both types gives the same outputs. Binomial fits additionally accept `type = "class"` for hard label prediction.
+The user can make predictions from the fitted object using the `predict()` function. The primary argument is `newx`, a matrix of values for `X` at which predictions are desired. Two types are universally available: `"link"` (the linear predictor $X\boldsymbol{\beta} + \beta_0$) and `"response"` (the mean response $g(\eta)$). In the Gaussian case of course (since $g$ is the identity), both types gives the same outputs. Binomial fits additionally accept `type = "class"` for hard label prediction, and Cox fits accept `type = "survival"` for subject-specific survival curves (see the Cox section below).
 
 ```{r predict, out.lines = 6}
 predict(fit, newx = X[1:5,])                  # response
@@ -388,12 +388,12 @@ directly through `fit_cox$baseline_cumulative_hazard` and
 plot_baseline(fit_cox)
 ```
 
-For any new design, `predict_survival_function()` returns the common
-time grid and a matrix of survival probabilities, one column per
-subject. The result is plotted directly with `plot_survival_curves()`:
+For any new design, `predict(fit_cox, newx, type = "survival")` returns
+the common time grid and a matrix of survival probabilities, one column
+per subject. The result is plotted directly with `plot_survival_curves()`:
 
 ```{r cox-survival, fig.height = 3.2}
-sf <- predict_survival_function(fit_cox, newx = X_cox[1:3, ])
+sf <- predict(fit_cox, newx = X_cox[1:3, ], type = "survival")
 plot_survival_curves(sf)
 ```
 
