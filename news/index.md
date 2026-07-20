@@ -1,5 +1,19 @@
 # Changelog
 
+## picreg 0.1.4
+
+### New features
+
+- [`predict()`](https://rdrr.io/r/stats/predict.html) for Cox fits now
+  accepts `type = "survival"`, which returns subject-specific survival
+  curves (a list with `time` and `survival` components). This replaces
+  the standalone `predict_survival_function()`, which has been removed.
+
+### Breaking changes
+
+- `predict_survival_function()` has been removed. Use
+  `predict(object, newx, type = "survival")` instead.
+
 ## picreg 0.1.3
 
 CRAN release: 2026-06-04
