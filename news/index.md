@@ -2,6 +2,8 @@
 
 ## picreg 0.1.3
 
+CRAN release: 2026-06-04
+
 ### Bug fixes
 
 - Resolved a C++ One Definition Rule (ODR) violation reported under

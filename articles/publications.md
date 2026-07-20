@@ -14,6 +14,16 @@ gradient statistic, then studies support recovery and the
 phase-transition behavior empirically, benchmarking PIC against
 competing methods on real-world datasets.
 
+## Survival of the fittest Cox model: Pivotal variable selection for time-to-event data
+
+van Cutsem & Sardy (2025).
+[arXiv:2510.19374](https://arxiv.org/abs/2510.19374)
+
+Extends PIC to the Cox proportional-hazards model for survival data. The
+paper develops a pivotal penalty calibration for the partial likelihood,
+enabling support recovery in time-to-event settings without estimating
+nuisance parameters.
+
 ## A pivotal transform for the high-dimensional location-scale model
 
 van de Geer, Sardy & van Cutsem (2025).

@@ -219,7 +219,9 @@ predictions are desired. Two types are universally available: `"link"`
 (the linear predictor X\boldsymbol{\beta} + \beta_0) and `"response"`
 (the mean response g(\eta)). In the Gaussian case of course (since g is
 the identity), both types gives the same outputs. Binomial fits
-additionally accept `type = "class"` for hard label prediction.
+additionally accept `type = "class"` for hard label prediction, and Cox
+fits accept `type = "survival"` for subject-specific survival curves
+(see the Cox section below).
 
 ``` r
 
@@ -549,15 +551,14 @@ plot_baseline(fit_cox)
 
 ![](vignette_files/figure-html/cox-baseline-1.png)
 
-For any new design,
-[`predict_survival_function()`](https://vcmaxouuu.github.io/picreg/reference/predict_survival_function.md)
-returns the common time grid and a matrix of survival probabilities, one
-column per subject. The result is plotted directly with
+For any new design, `predict(fit_cox, newx, type = "survival")` returns
+the common time grid and a matrix of survival probabilities, one column
+per subject. The result is plotted directly with
 [`plot_survival_curves()`](https://vcmaxouuu.github.io/picreg/reference/plot_survival_curves.md):
 
 ``` r
 
-sf <- predict_survival_function(fit_cox, newx = X_cox[1:3, ])
+sf <- predict(fit_cox, newx = X_cox[1:3, ], type = "survival")
 plot_survival_curves(sf)
 ```
 

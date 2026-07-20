@@ -1,8 +1,8 @@
 # Plot subject-specific Cox survival curves.
 
 Step-line visualization of the output of
-[`predict_survival_function()`](https://vcmaxouuu.github.io/picreg/reference/predict_survival_function.md)
-or
+[`predict.pic()`](https://vcmaxouuu.github.io/picreg/reference/predict.pic.md)
+with `type = "survival"` or
 [`feature_effects_on_survival()`](https://vcmaxouuu.github.io/picreg/reference/feature_effects_on_survival.md):
 one survival curve per subject (or per feature value) on a common time
 grid. To keep curves distinguishable, each curve is drawn with its own
@@ -28,8 +28,8 @@ plot_survival_curves(
 - sf:
 
   A list as returned by
-  [`predict_survival_function()`](https://vcmaxouuu.github.io/picreg/reference/predict_survival_function.md)
-  or
+  [`predict.pic()`](https://vcmaxouuu.github.io/picreg/reference/predict.pic.md)
+  with `type = "survival"` or
   [`feature_effects_on_survival()`](https://vcmaxouuu.github.io/picreg/reference/feature_effects_on_survival.md),
   with components `time` (length `K`) and `survival` (matrix `K x m`,
   one column per curve).

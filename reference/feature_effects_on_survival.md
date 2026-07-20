@@ -3,8 +3,8 @@
 Builds the family of survival curves obtained by varying a single
 covariate while holding the others at their column means. The returned
 object has the same shape as
-[`predict_survival_function()`](https://vcmaxouuu.github.io/picreg/reference/predict_survival_function.md),
-so it composes directly with
+[`predict.pic()`](https://vcmaxouuu.github.io/picreg/reference/predict.pic.md)
+with `type = "survival"`, so it composes directly with
 [`plot_survival_curves()`](https://vcmaxouuu.github.io/picreg/reference/plot_survival_curves.md).
 
 ## Usage
@@ -53,5 +53,5 @@ categorical covariates), and the four equispaced empirical quantiles
 
 ## See also
 
-[`predict_survival_function()`](https://vcmaxouuu.github.io/picreg/reference/predict_survival_function.md),
+[`predict.pic()`](https://vcmaxouuu.github.io/picreg/reference/predict.pic.md),
 [`plot_survival_curves()`](https://vcmaxouuu.github.io/picreg/reference/plot_survival_curves.md).

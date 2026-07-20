@@ -63,9 +63,6 @@ The Pivotal Detection Boundary selector and its diagnostics.
 
 Helpers for the Cox proportional-hazards family.
 
-- [`predict_survival_function()`](https://vcmaxouuu.github.io/picreg/reference/predict_survival_function.md)
-  : Survival curves for new data from a fitted Cox pic model.
-
 - [`feature_effects_on_survival()`](https://vcmaxouuu.github.io/picreg/reference/feature_effects_on_survival.md)
   : Effect of one feature on the Cox survival curve.
 

@@ -67,7 +67,7 @@ Cutsem</h4>
                         <h4 data-toc-skip class="author">Sylvain
 Sardy</h4>
             
-            <h4 data-toc-skip class="date">June 04, 2026</h4>
+            <h4 data-toc-skip class="date">July 20, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/VcMaxouuu/picreg/blob/main/vignettes/vignette.Rmd" class="external-link"><code>vignettes/vignette.Rmd</code></a></small>
       <div class="d-none name"><code>vignette.Rmd</code></div>
@@ -261,7 +261,9 @@ predictions are desired. Two types are universally available:
 <code>"response"</code> (the mean response <span class="math inline">g(\eta)</span>). In the Gaussian case of course
 (since <span class="math inline">g</span> is the identity), both types
 gives the same outputs. Binomial fits additionally accept
-<code>type = "class"</code> for hard label prediction.</p>
+<code>type = "class"</code> for hard label prediction, and Cox fits
+accept <code>type = "survival"</code> for subject-specific survival
+curves (see the Cox section below).</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, newx <span class="op">=</span> <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="op">]</span><span class="op">)</span>                  <span class="co"># response</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]  0.4305631  1.8606175 -1.0359871  1.1197544  0.2146807</span></span></code></pre>
@@ -567,12 +569,13 @@ accessible directly through
 <div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_baseline.html">plot_baseline</a></span><span class="op">(</span><span class="va">fit_cox</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette_files/figure-html/cox-baseline-1.png" class="r-plt" alt="" width="480" style="display: block; margin: auto;"></p>
-<p>For any new design, <code><a href="../reference/predict_survival_function.html">predict_survival_function()</a></code> returns
-the common time grid and a matrix of survival probabilities, one column
-per subject. The result is plotted directly with
+<p>For any new design,
+<code>predict(fit_cox, newx, type = "survival")</code> returns the
+common time grid and a matrix of survival probabilities, one column per
+subject. The result is plotted directly with
 <code><a href="../reference/plot_survival_curves.html">plot_survival_curves()</a></code>:</p>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_survival_function.html">predict_survival_function</a></span><span class="op">(</span><span class="va">fit_cox</span>, newx <span class="op">=</span> <span class="va">X_cox</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="op">]</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">sf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit_cox</span>, newx <span class="op">=</span> <span class="va">X_cox</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="op">]</span>, type <span class="op">=</span> <span class="st">"survival"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/plot_survival_curves.html">plot_survival_curves</a></span><span class="op">(</span><span class="va">sf</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette_files/figure-html/cox-survival-1.png" class="r-plt" alt="" width="480" style="display: block; margin: auto;"></p>
 <p>To visualize how a selected variable affects the predicted survival
@@ -938,7 +941,7 @@ faster.</li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
