@@ -2,6 +2,8 @@
 
 ## picreg 0.1.4
 
+CRAN release: 2026-07-20
+
 ### New features
 
 - [`predict()`](https://rdrr.io/r/stats/predict.html) for Cox fits now
