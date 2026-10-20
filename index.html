@@ -62,56 +62,31 @@
 </h1></div>
 <!-- badges: start -->
 
-<p><strong>Variable selection using the Pivotal Information Criterion.</strong></p>
-<p>Sparse regression and classification via the Pivotal Information Criterion (PIC), an alternative to BIC, cross-validation, and Lasso-based tuning. The regularization parameter is selected from a pivotal null-distribution statistic, eliminating the need for cross-validation and yielding sharper support recovery.</p>
-<p>Provides FISTA optimization for the L1, SCAD, and MCP penalties across six response distributions:</p>
-<table class="table">
-<thead><tr>
-<th>Family</th>
-<th><code>family =</code></th>
-<th>Response</th>
-</tr></thead>
-<tbody>
-<tr>
-<td>Gaussian</td>
-<td><code>"gaussian"</code></td>
-<td>continuous</td>
-</tr>
-<tr>
-<td>Binomial</td>
-<td><code>"binomial"</code></td>
-<td>0/1 binary</td>
-</tr>
-<tr>
-<td>Poisson</td>
-<td><code>"poisson"</code></td>
-<td>count</td>
-</tr>
-<tr>
-<td>Exponential</td>
-<td><code>"exponential"</code></td>
-<td>positive cont.</td>
-</tr>
-<tr>
-<td>Gumbel</td>
-<td><code>"gumbel"</code></td>
-<td>continuous</td>
-</tr>
-<tr>
-<td>Cox PH</td>
-<td><code>"cox"</code></td>
-<td>(time, event)</td>
-</tr>
-</tbody>
-</table>
-<p>Under standard sparsity assumptions, the selector achieves a phase transition for exact support recovery, analogous to results in compressed sensing.</p>
+<p><strong>Tuning-free variable selection with the Pivotal Information Criterion.</strong></p>
+<p><code>picreg</code> fits sparse regression, classification and survival models with the <strong>Pivotal Information Criterion</strong> (PIC) of <a href="https://arxiv.org/abs/2603.04172" class="external-link">Sardy, van Cutsem and van de Geer (2026)</a>. Like BIC or AIC, PIC fixes its penalty level <em>before</em> looking at the response. Unlike them, it fixes it at the <strong>detection boundary</strong>: the smallest penalty that keeps pure noise out of the model with probability <span class="math inline">1 - \alpha</span>. This penalty depends only on the design matrix, so PIC needs neither cross-validation nor a grid of models, and it selects sparse, interpretable models with a controlled number of false discoveries.</p>
+<div class="section level2">
+<h2 id="why-pic">Why PIC?<a class="anchor" aria-label="anchor" href="#why-pic"></a>
+</h2>
+<ul>
+<li>
+<strong>No tuning.</strong> The regularization parameter is computed once from <code>X</code>, without cross-validation, validation set or path selection.</li>
+<li>
+<strong>Calibrated false discoveries.</strong> When the data carry no signal, PIC returns the empty model with probability <span class="math inline">1 - \alpha</span> (95% by default), for every family.</li>
+<li>
+<strong>Sharp support recovery.</strong> The probability of recovering exactly the true set of variables shows a phase transition, as in compressed sensing: close to one up to a critical sparsity level, then dropping.</li>
+<li>
+<strong>Parsimony at no cost in prediction.</strong> On benchmark datasets, PIC selects the smallest models among state-of-the-art selectors for a similar predictive performance (<a href="#performance">see below</a>).</li>
+<li>
+<strong>One interface, six models.</strong> Gaussian, binomial, Poisson, exponential, Gumbel and Cox models, with the lasso, SCAD and MCP penalties, behind a <code>glmnet</code>-style API. The core is written in C++ (RcppArmadillo).</li>
+</ul>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <p>Install the released version from CRAN:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"picreg"</span><span class="op">)</span></span></code></pre></div>
-<p>Or the development version from GitHub:</p>
+<p>or the development version from GitHub:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"VcMaxouuu/picreg"</span><span class="op">)</span></span></code></pre></div>
@@ -119,30 +94,368 @@
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
+<p><code>QuickStartExample</code> is a Gaussian dataset with <span class="math inline">n = 100</span> observations and <span class="math inline">p = 30</span> predictors, of which only <code>gene_1</code>, …, <code>gene_5</code> carry signal.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/VcMaxouuu/picreg" class="external-link">picreg</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">QuickStartExample</span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pic.html">pic</a></span><span class="op">(</span><span class="va">QuickStartExample</span><span class="op">$</span><span class="va">X</span>, <span class="va">QuickStartExample</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="va">QuickStartExample</span><span class="op">$</span><span class="va">X</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">QuickStartExample</span><span class="op">$</span><span class="va">y</span></span>
 <span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="va">selected</span>   <span class="co"># names of the selected variables</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="va">lambda</span>     <span class="co"># PDB-selected lambda (no cross-validation)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>   <span class="co"># family, penalty, lambda, and non-zero coefficients</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>      <span class="co"># coefficients (sparse matrix, original scale of X)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, newx <span class="op">=</span> <span class="va">QuickStartExample</span><span class="op">$</span><span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span><span class="op">)</span></span></code></pre></div>
-<p>The design deliberately mirrors <code>glmnet</code>: a single <code><a href="reference/pic.html">pic()</a></code> fitting function returning an object equipped with <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>, and <code><a href="reference/assess.html">assess()</a></code> methods that behave consistently across all six families.</p>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, lambda_seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>   <span class="co"># lambda_seed: reproducible calibration</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="co">#&gt; pic fit summary</span></span>
+<span><span class="co">#&gt;   family    : gaussian</span></span>
+<span><span class="co">#&gt;   penalty   : lasso</span></span>
+<span><span class="co">#&gt;   lambda    : 0.3081</span></span>
+<span><span class="co">#&gt;   dimensions: n = 100, p = 30</span></span>
+<span><span class="co">#&gt;   selected  : 5 / 30</span></span>
+<span><span class="co">#&gt;   intercept : 0.005989</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt;   Non-zero coefficients (original scale):</span></span>
+<span><span class="co">#&gt;  variable coefficient</span></span>
+<span><span class="co">#&gt;    gene_3     -0.7606</span></span>
+<span><span class="co">#&gt;    gene_4     -0.6620</span></span>
+<span><span class="co">#&gt;    gene_1     -0.4130</span></span>
+<span><span class="co">#&gt;    gene_5      0.1495</span></span>
+<span><span class="co">#&gt;    gene_2     -0.0571</span></span></code></pre></div>
+<p>The five active variables are recovered exactly, without any tuning. The fit works with the usual methods:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>                              <span class="co"># sparse coefficients, original scale</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, newx <span class="op">=</span> <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="op">]</span><span class="op">)</span>          <span class="co"># predictions on new data</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>                              <span class="co"># lollipop plot of the selected effects</span></span>
+<span><span class="fu"><a href="reference/assess.html">assess</a></span><span class="op">(</span><span class="va">fit</span>, newx <span class="op">=</span> <span class="va">X</span>, newy <span class="op">=</span> <span class="va">y</span>,        <span class="co"># predictive and support-recovery metrics</span></span>
+<span>       true_features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"gene_"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Changing the model or the penalty only takes an argument; the calibration can be reused across penalties, since it does not depend on them:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_scad</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, penalty <span class="op">=</span> <span class="st">"scad"</span>, lambda <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">lambda_pdb</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BinomialExample</span><span class="op">)</span></span>
+<span><span class="va">fit_logit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pic.html">pic</a></span><span class="op">(</span><span class="va">BinomialExample</span><span class="op">$</span><span class="va">X</span>, <span class="va">BinomialExample</span><span class="op">$</span><span class="va">y</span>, family <span class="op">=</span> <span class="st">"binomial"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">CoxExample</span><span class="op">)</span></span>
+<span><span class="va">fit_cox</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pic.html">pic</a></span><span class="op">(</span><span class="va">CoxExample</span><span class="op">$</span><span class="va">X</span>, <span class="va">CoxExample</span><span class="op">$</span><span class="va">y</span>, family <span class="op">=</span> <span class="st">"cox"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="supported-models">Supported models<a class="anchor" aria-label="anchor" href="#supported-models"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr>
+<th>Model</th>
+<th><code>family =</code></th>
+<th>Response <code>y</code>
+</th>
+<th>Loss minimized by PIC</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Linear regression</td>
+<td><code>"gaussian"</code></td>
+<td>numeric</td>
+<td>square root of the mean squared error (square-root lasso)</td>
+</tr>
+<tr>
+<td>Logistic regression</td>
+<td><code>"binomial"</code></td>
+<td>0/1, logical, or two-level factor</td>
+<td>weighted score loss</td>
+</tr>
+<tr>
+<td>Poisson regression</td>
+<td><code>"poisson"</code></td>
+<td>non-negative counts</td>
+<td>weighted score loss</td>
+</tr>
+<tr>
+<td>Exponential regression</td>
+<td><code>"exponential"</code></td>
+<td>non-negative</td>
+<td>negative log-likelihood</td>
+</tr>
+<tr>
+<td>Gumbel location-scale</td>
+<td><code>"gumbel"</code></td>
+<td>numeric</td>
+<td>exponential of the negative log-likelihood, scale profiled out</td>
+</tr>
+<tr>
+<td>Cox proportional hazards</td>
+<td><code>"cox"</code></td>
+<td>
+<code>(time, event)</code> matrix or <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv</a></code>
+</td>
+<td>square root of the negative log partial likelihood (Breslow ties)</td>
+</tr>
+</tbody>
+</table>
+<p>Each model is combined with one of three penalties: <code>"lasso"</code> (<span class="math inline">\ell_1</span>), <code>"scad"</code> or <code>"mcp"</code>. The non-convex penalties reduce the shrinkage bias of the lasso on large coefficients and recover the support at higher sparsity levels.</p>
+</div>
+<div class="section level2">
+<h2 id="how-pic-chooses-the-penalty">How PIC chooses the penalty<a class="anchor" aria-label="anchor" href="#how-pic-chooses-the-penalty"></a>
+</h2>
+<p>PIC minimizes</p>
+<p><span class="math display">
+\phi\Bigl(l_n\bigl(g(\beta_0\mathbf{1} + X\boldsymbol\beta)\bigr)\Bigr)
++ \lambda_\alpha^{\mathrm{PDB}}\, \mathrm{pen}(\boldsymbol\beta),
+</span></p>
+<p>where <span class="math inline">l_n</span> is a base loss and <span class="math inline">(\phi, g)</span> are model-specific transformations. The origin <span class="math inline">\boldsymbol\beta = \mathbf 0</span> is a solution as soon as the penalty exceeds <span class="math inline">\Lambda</span>, the sup-norm of the gradient of the loss at the null fit. PIC sets the penalty at the <strong>pivotal detection boundary</strong> <span class="math inline">\lambda_\alpha^{\mathrm{PDB}}</span>, the <span class="math inline">(1 - \alpha)</span>-quantile of <span class="math inline">\Lambda</span> under pure noise. The transformations <span class="math inline">(\phi, g)</span> are chosen so that this quantile does not depend on the unknown intercept or scale: it can be computed from <code>X</code> alone, before the model is fitted.</p>
+<p><code><a href="reference/pic.html">pic()</a></code> computes <span class="math inline">\lambda_\alpha^{\mathrm{PDB}}</span> with one of three methods, through <code>lambda_method</code>:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Method</th>
+<th>Principle</th>
+<th>When to use</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>"mc_exact"</code> (default)</td>
+<td>Monte Carlo under the null model of the family</td>
+<td>small to moderate problems</td>
+</tr>
+<tr>
+<td><code>"mc_gaussian"</code></td>
+<td>Monte Carlo under the Gaussian limit of the gradient</td>
+<td>large <span class="math inline">n</span>
+</td>
+</tr>
+<tr>
+<td><code>"analytical"</code></td>
+<td>closed-form Bonferroni bound, conservative</td>
+<td>very large problems</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/pdb_summary.html">pdb_summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>        <span class="co"># calibration details and simulated null distribution</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">lambda_pdb</span><span class="op">)</span>    <span class="co"># null distribution with the selected lambda</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="performance">Performance<a class="anchor" aria-label="anchor" href="#performance"></a>
+</h2>
+<p>The results below are reported in <a href="https://arxiv.org/abs/2603.04172" class="external-link">Sardy, van Cutsem and van de Geer (2026)</a>, and the scripts that produce them are in <a href="https://github.com/VcMaxouuu/picreg/tree/main/simulations" class="external-link"><code>simulations/</code></a>.</p>
+<p><strong>Calibration under pure noise.</strong> On Gaussian data with <span class="math inline">n = p = 100</span> and no signal, PIC selected at least one variable in 4% of the datasets, for a target of <span class="math inline">\alpha = 5\%</span>. Cross-validated lasso (<code>cv.glmnet</code>, <code>lambda.min</code>) did so in 43% of the datasets, EBIC in 22% and BIC in 96%.</p>
+<p><strong>Phase transition.</strong> Probability of exact support recovery as a function of the number <span class="math inline">s</span> of active variables (Gaussian model, <span class="math inline">n = p = 100</span>, non-zero coefficients of magnitude 3 with random signs, 100 replications per <span class="math inline">s</span>):</p>
+<p align="center">
+<img src="reference/figures/README-phase-transition.png" width="70%" alt="Probability of exact support recovery against sparsity for picreg and cv.glmnet"></p>
+<p><strong>Real data.</strong> Mean test performance (mean model size in parentheses) over 100 random 70/30 train-test splits (90 for Riboflavin), after an unpenalized refit on the selected variables. BIC and EBIC use forward selection.</p>
+<table class="table">
+<colgroup>
+<col width="11%">
+<col width="15%">
+<col width="15%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+</colgroup>
+<thead><tr>
+<th>Dataset</th>
+<th align="right"><span class="math inline">n</span></th>
+<th align="right"><span class="math inline">p</span></th>
+<th>PIC (lasso)</th>
+<th>PIC (SCAD)</th>
+<th>cv.glmnet</th>
+<th>BIC</th>
+<th>EBIC</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><em>Regression, relative test MSE</em></td>
+<td align="right"></td>
+<td align="right"></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Prostate cancer</td>
+<td align="right">97</td>
+<td align="right">8</td>
+<td>
+<strong>0.435</strong> (3.1)</td>
+<td>0.456 (2.7)</td>
+<td>0.451 (5.9)</td>
+<td>0.454 (3.1)</td>
+<td>0.460 (2.8)</td>
+</tr>
+<tr>
+<td>Diabetes</td>
+<td align="right">442</td>
+<td align="right">64</td>
+<td>0.531 (4.6)</td>
+<td>0.535 (4.7)</td>
+<td>0.536 (17.6)</td>
+<td>
+<strong>0.529</strong> (6.3)</td>
+<td>0.542 (4.7)</td>
+</tr>
+<tr>
+<td>Riboflavin</td>
+<td align="right">71</td>
+<td align="right">4088</td>
+<td>
+<strong>0.411</strong> (6.0)</td>
+<td>
+<strong>0.411</strong> (6.0)</td>
+<td>1.323 (37.5)</td>
+<td>0.754 (40.0)</td>
+<td>0.492 (8.0)</td>
+</tr>
+<tr>
+<td><em>Classification, test accuracy</em></td>
+<td align="right"></td>
+<td align="right"></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Breast cancer</td>
+<td align="right">569</td>
+<td align="right">30</td>
+<td>
+<strong>0.965</strong> (4.5)</td>
+<td>0.950 (3.0)</td>
+<td>0.963 (12.9)</td>
+<td>0.962 (5.2)</td>
+<td>0.963 (4.3)</td>
+</tr>
+<tr>
+<td>Ionosphere</td>
+<td align="right">351</td>
+<td align="right">33</td>
+<td>0.872 (4.6)</td>
+<td>0.867 (4.3)</td>
+<td>
+<strong>0.878</strong> (17.5)</td>
+<td>0.867 (8.0)</td>
+<td>0.864 (6.0)</td>
+</tr>
+<tr>
+<td>Sonar</td>
+<td align="right">208</td>
+<td align="right">60</td>
+<td>0.715 (4.0)</td>
+<td>0.720 (3.3)</td>
+<td>
+<strong>0.735</strong> (19.8)</td>
+<td>0.729 (7.6)</td>
+<td>0.722 (4.4)</td>
+</tr>
+</tbody>
+</table>
+<p>On every dataset, a PIC fit selects the smallest model, with a predictive performance close to the best one.</p>
+</div>
+<div class="section level2">
+<h2 id="main-functions">Main functions<a class="anchor" aria-label="anchor" href="#main-functions"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Task</th>
+<th>Functions</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Fit a model</td>
+<td><code><a href="reference/pic.html">pic()</a></code></td>
+</tr>
+<tr>
+<td>Inspect a fit</td>
+<td>
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>
+</td>
+</tr>
+<tr>
+<td>Predict and evaluate</td>
+<td>
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>, <code><a href="reference/assess.html">assess()</a></code>
+</td>
+</tr>
+<tr>
+<td>Penalty calibration</td>
+<td>
+<code><a href="reference/lambda_pdb.html">lambda_pdb()</a></code>, <code><a href="reference/pdb_summary.html">pdb_summary()</a></code>, <code>plot(fit$lambda_pdb)</code>
+</td>
+</tr>
+<tr>
+<td>Survival analysis</td>
+<td>
+<code>predict(type = "survival")</code>, <code><a href="reference/feature_effects_on_survival.html">feature_effects_on_survival()</a></code>, <code><a href="reference/plot_survival_curves.html">plot_survival_curves()</a></code>, <code><a href="reference/plot_baseline.html">plot_baseline()</a></code>, <code><a href="reference/concordance_index.html">concordance_index()</a></code>
+</td>
+</tr>
+<tr>
+<td>Diagnostics</td>
+<td>
+<code><a href="reference/phase_transition.html">phase_transition()</a></code>, <code><a href="reference/pdb_asymptotic.html">pdb_asymptotic()</a></code>
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
-<p>The full walk-through — fitting across all six families, predicting, visualizing, choosing penalties, and running diagnostics (<code><a href="reference/phase_transition.html">phase_transition()</a></code>, <code><a href="reference/pdb_asymptotic.html">pdb_asymptotic()</a></code>) — lives in the package vignette:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"vignette"</span>, package <span class="op">=</span> <span class="st">"picreg"</span><span class="op">)</span></span></code></pre></div>
+<ul>
+<li><a href="https://vcmaxouuu.github.io/picreg/">Package website</a></li>
+<li>
+<a href="https://vcmaxouuu.github.io/picreg/articles/vignette.html">Get started</a>: a walk-through of all six models, prediction, calibration and diagnostics (also available with <code><a href="articles/vignette.html">vignette("vignette", package = "picreg")</a></code>)</li>
+<li>
+<a href="https://vcmaxouuu.github.io/picreg/articles/pic-paradigm.html">The PIC paradigm</a>: the ideas behind the criterion</li>
+<li><a href="https://vcmaxouuu.github.io/picreg/reference/index.html">Function reference</a></li>
+</ul>
 </div>
 <div class="section level2">
-<h2 id="reference">Reference<a class="anchor" aria-label="anchor" href="#reference"></a>
+<h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
-<p>Sardy, van Cutsem, and van de Geer. <em>The Pivotal Information Criterion.</em> <a href="https://arxiv.org/abs/2603.04172" class="external-link uri">https://arxiv.org/abs/2603.04172</a> (<a href="doi:10.48550/arXiv.2603.04172" class="uri">doi:10.48550/arXiv.2603.04172</a>)</p>
+<p>If you use <code>picreg</code>, please cite:</p>
+<blockquote>
+<p>Sardy, S., van Cutsem, M. and van de Geer, S. (2026). The Pivotal Information Criterion. <em>arXiv:2603.04172</em>. <a href="https://doi.org/10.48550/arXiv.2603.04172" class="external-link uri">https://doi.org/10.48550/arXiv.2603.04172</a></p>
+</blockquote>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bibtex"><code class="sourceCode bibtex"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="va">@article</span>{<span class="ot">sardy2026pic</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="dt">title</span>   = {The Pivotal Information Criterion},</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="dt">author</span>  = {Sardy, Sylvain and van Cutsem, Maxime and van de Geer, Sara},</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="dt">journal</span> = {arXiv preprint arXiv:2603.04172},</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="dt">year</span>    = {2026},</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="dt">doi</span>     = {10.48550/arXiv.2603.04172}</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>}</span></code></pre></div>
+<p>Related work:</p>
+<ul>
+<li>van Cutsem, M. and Sardy, S. (2026). Survival of the fittest Cox model: Pivotal variable selection for time-to-event data. <a href="https://arxiv.org/abs/2510.19374" class="external-link">arXiv:2510.19374</a>
+</li>
+<li>van de Geer, S., Sardy, S. and van Cutsem, M. (2026). A pivotal transform for the high-dimensional location-scale model. <a href="https://arxiv.org/abs/2512.18705" class="external-link">arXiv:2512.18705</a>
+</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="getting-help">Getting help<a class="anchor" aria-label="anchor" href="#getting-help"></a>
+</h2>
+<p>Bug reports and feature requests are welcome on the <a href="https://github.com/VcMaxouuu/picreg/issues" class="external-link">issue tracker</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+</h2>
+<p>GPL-2. See the <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html" class="external-link">GNU General Public License, version 2</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -183,6 +496,7 @@
 <li><a href="https://CRAN.R-project.org/package=picreg" class="external-link"><img src="https://www.r-pkg.org/badges/version/picreg" alt="CRAN status"></a></li>
 <li><a href="https://CRAN.R-project.org/package=picreg" class="external-link"><img src="https://cranlogs.r-pkg.org/badges/grand-total/picreg" alt="CRAN downloads"></a></li>
 <li><a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html" class="external-link"><img src="https://img.shields.io/badge/license-GPL--2-blue.svg" alt="License: GPL-2"></a></li>
+<li><a href="https://vcmaxouuu.github.io/picreg/"><img src="https://img.shields.io/badge/docs-pkgdown-blue.svg" alt="Website"></a></li>
 </ul>
 </div>
 

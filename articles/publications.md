@@ -16,7 +16,7 @@ competing methods on real-world datasets.
 
 ## Survival of the fittest Cox model: Pivotal variable selection for time-to-event data
 
-van Cutsem & Sardy (2025).
+van Cutsem & Sardy (2026).
 [arXiv:2510.19374](https://arxiv.org/abs/2510.19374)
 
 Extends PIC to the Cox proportional-hazards model for survival data. The
@@ -26,7 +26,7 @@ nuisance parameters.
 
 ## A pivotal transform for the high-dimensional location-scale model
 
-van de Geer, Sardy & van Cutsem (2025).
+van de Geer, Sardy & van Cutsem (2026).
 [arXiv:2512.18705](https://arxiv.org/abs/2512.18705)
 
 The theoretical backbone of PIC in the location-scale setting: the
