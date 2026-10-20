@@ -8,7 +8,6 @@ outputs they produced (CSV, RDS, PDF).
 | --- | --- |
 | `jasa_paper/` | Sardy, van Cutsem & van de Geer, *The Pivotal Information Criterion* ([arXiv:2603.04172](https://arxiv.org/abs/2603.04172)) |
 | `cox_paper/` | van Cutsem & Sardy, *Survival of the fittest Cox model: Pivotal variable selection for time-to-event data* ([arXiv:2510.19374](https://arxiv.org/abs/2510.19374)) |
-| `lassoVSgumbel/` | van de Geer, Sardy & van Cutsem, *A pivotal transform for the high-dimensional location-scale model* ([arXiv:2512.18705](https://arxiv.org/abs/2512.18705)) |
 
 ## `jasa_paper/`
 

@@ -33,6 +33,9 @@ joss/
 /doc/
 /Meta/
 
+# Simulations kept local only
+simulations/lassoVSgumbel/
+
 # Simulation datasets that are not redistributed (see simulations/README.md)
 simulations/cox_paper/Chop Data.csv
 simulations/cox_paper/ChopData.csv
