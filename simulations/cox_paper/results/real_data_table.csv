@@ -1,0 +1,7 @@
+"Dataset","PIC-lasso (nsel)","PIC-lasso (C-index)","PIC-scad (nsel)","PIC-scad (C-index)","cv.glmnet (nsel)","cv.glmnet (C-index)","BIC forward (nsel)","BIC forward (C-index)","Cox + BH (nsel)","Cox + BH (C-index)"
+"lung",1,0.57,1,0.58,4.5,0.61,2,0.6,1,0.58
+"pbc",7,0.82,5,0.81,9,0.82,5,0.81,1,0.71
+"gbsg",3,0.67,3,0.67,6,0.67,3,0.67,3,0.67
+"lymphoma",0,0.5,0,0.5,19,0.6,50,0.57,0,0.5
+"nki70",1,0.67,1,0.66,10.5,0.66,12,0.68,0,0.5
+"mcl",1,0.68,1,0.68,5,0.65,23,0.6,0,0.5

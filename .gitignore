@@ -23,3 +23,20 @@ picreg-manual.pdf
 # Claude Code workspace (local only)
 .claude/
 docs
+
+# CRAN submission files (local only)
+CRAN-SUBMISSION
+cran-comments.md
+
+# Article (separate git repo)
+joss/
+/doc/
+/Meta/
+
+# Simulation datasets that are not redistributed (see simulations/README.md)
+simulations/cox_paper/Chop Data.csv
+simulations/cox_paper/ChopData.csv
+simulations/cox_paper/LymphomaData.rda
+simulations/cox_paper/mclData.csv
+simulations/jasa_paper/data/ProstateCancer.csv
+simulations/jasa_paper/data/riboflavin.csv
