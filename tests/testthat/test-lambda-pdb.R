@@ -45,3 +45,45 @@ test_that("pdb_summary() prints the lambda and Monte Carlo distribution", {
   expect_equal(fit$lambda_pdb$value, fit$lambda)
   expect_equal(fit$lambda_pdb$method, "mc_exact")
 })
+
+test_that("lambda_pdb() defaults to 2000 draws and stores its metadata", {
+  X <- scale(matrix(rnorm(300), 60, 5)) * sqrt(60 / 59)
+  out <- lambda_pdb(X, "poisson")
+  expect_length(out$statistics, 2000L)
+  expect_equal(out$family, "poisson")
+  expect_equal(c(out$n, out$p), c(60L, 5L))
+})
+
+test_that("a seed makes lambda reproducible and leaves the RNG stream intact", {
+  X <- scale(matrix(rnorm(300), 60, 5)) * sqrt(60 / 59)
+  a <- lambda_pdb(X, "binomial", n_simu = 300L, seed = 11)
+  b <- lambda_pdb(X, "binomial", n_simu = 300L, seed = 11)
+  expect_identical(a$value, b$value)
+  expect_equal(a$seed, 11)
+
+  set.seed(1); u1 <- runif(1)
+  set.seed(1); invisible(lambda_pdb(X, "binomial", n_simu = 50L, seed = 3))
+  u2 <- runif(1)
+  expect_identical(u1, u2)
+
+  data(QuickStartExample)
+  f1 <- pic(QuickStartExample$X, QuickStartExample$y, lambda_seed = 4)
+  f2 <- pic(QuickStartExample$X, QuickStartExample$y, lambda_seed = 4)
+  expect_identical(f1$lambda, f2$lambda)
+})
+
+test_that("a lambda_pdb object can be reused across penalties", {
+  data(QuickStartExample)
+  X <- QuickStartExample$X
+  y <- QuickStartExample$y
+  fit <- pic(X, y, lambda_n_simu = 300L)
+  fit_scad <- pic(X, y, penalty = "scad", lambda = fit$lambda_pdb)
+
+  expect_identical(fit_scad$lambda, fit$lambda)
+  expect_identical(fit_scad$lambda_pdb, fit$lambda_pdb)
+  expect_output(pdb_summary(fit_scad), "mc_exact")
+
+  expect_error(pic(X, as.integer(y > 0), family = "binomial",
+                   lambda = fit$lambda_pdb), "gaussian family")
+  expect_error(pic(X[, 1:10], y, lambda = fit$lambda_pdb), "design")
+})

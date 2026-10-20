@@ -14,10 +14,10 @@ phase_transition(
   beta_value = 3,
   lambda_method = "mc_exact",
   lambda_alpha = 0.05,
-  lambda_n_simu = 5000L,
+  lambda_n_simu = 2000L,
   verbose = FALSE,
   parallel = FALSE,
-  workers = parallel::detectCores() - 1L
+  workers = NULL
 )
 }
 \arguments{
@@ -41,23 +41,30 @@ the response. The sign is fixed to \code{+}.}
 
 \item{lambda_alpha}{Nominal level for the PDB selector.}
 
-\item{lambda_n_simu}{Monte Carlo size for the PDB selector.}
+\item{lambda_n_simu}{Monte Carlo size for the PDB selector. Default 2000.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints a one-line progress message per \verb{(n, p, penalty, s)}.}
 
 \item{parallel}{Logical; if \code{TRUE}, distribute the \code{m} Monte Carlo
 replications of each \verb{(n, p, penalty, s)} cell across multiple R
-processes via the \code{future} framework (\code{future::multisession} plan).}
+processes via the \code{future} framework (a \code{future::multisession} plan,
+the caller's plan being restored on exit). Requires the \pkg{future}
+and \pkg{future.apply} packages.}
 
 \item{workers}{Integer; number of background R processes to use when
-\code{parallel = TRUE}. Ignored otherwise.}
+\code{parallel = TRUE}. Default \code{NULL} uses all available cores but one
+(\code{future::availableCores(omit = 1)}, which honors the limits set by
+CRAN or a scheduler). Ignored otherwise.}
 }
 \value{
 An object of class \code{c("pic.phase_transition", "pic.diagnostic")}.
+\item{results}{Long-format \code{data.frame} with one row per
+\verb{(n, p, penalty, s)} and columns \code{n}, \code{p}, \code{penalty}, \code{s},
+\code{exact_recovery}, \code{tpr}, \code{fdr}, \code{n_failed}.}
+\item{exact_recovery, tpr, fdr}{Wide-format \code{data.frame}s with one row
+per \verb{(n, p, penalty)} curve (columns \code{n}, \code{p}, \code{penalty}) and one
+column \verb{s_<k>} per sparsity level.}
 \item{s_grid}{\code{0:s_max}.}
-\item{exact_recovery, tpr, fdr}{Matrices of shape \verb{(length(n) * length(penalty), s_max + 1)} -
-one row per \verb{(n, p, penalty)} curve, one column per sparsity level}
-\item{curve_n, curve_p, curve_penalty}{Curve descriptors aligned with the rows of the metric matrices.}
 \item{config}{A list of all configuration arguments for downstream plotting / reporting.}
 \item{call}{The call.}
 }
@@ -80,6 +87,10 @@ compared to the truth and three metrics are stored:
 \item{\code{tpr}}{\eqn{\left|\hat{S}\cap S\right| / |S|} - true positive rate. For \code{s = 0}, this is set to 1 when no true feature exists.}
 \item{\code{fdr}}{\eqn{\left|\hat{S}\setminus S\right| / \max{(|\hat{S}|, 1)}} - false discovery rate.}
 }
+
+Fits that fail are not counted as failed recoveries: they are excluded
+from the averages, counted in the \code{n_failed} column of \code{results}, and
+reported in a single warning.
 \subsection{Details on data sampling}{
 
 At each replicate, the design \eqn{X} is drawn iid
@@ -123,8 +134,7 @@ matrix \eqn{\bigl(\min(T_i, C_i),\, \mathbf{1}\{T_i \le C_i\}\bigr)}.
 \donttest{
 pt <- phase_transition(n = 50, p = 100, type = "gaussian",
                        s_max = 8, m = 20,
-                       penalty = c("lasso", "scad"), 
-                       parallel = TRUE)
+                       penalty = c("lasso", "scad"))
 plot(pt)
 }
 }

@@ -14,8 +14,8 @@ where \eqn{p_\lambda(\cdot)} depends on the penalty.
 \item{\code{"lasso"}}{
 L1 (soft-thresholding) penalty:
 \deqn{p_\lambda(|t|) = \lambda |t|.}
-Convex, gives the strongest shrinkage on large coefficients
-bias does not vanish as \eqn{|t| \to \infty}.
+Convex. Of the three penalties it shrinks large coefficients the
+most: its bias does not vanish as \eqn{|t| \to \infty}.
 }
 \item{\code{"scad"} (Smoothly Clipped Absolute Deviation, Fan & Li 2001)}{
 Non-convex penalty with concavity parameter \code{scad_a > 2}

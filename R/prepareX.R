@@ -3,21 +3,29 @@
 #' Standardizes columns to zero mean and unit variance (population sd; `n` divisor)
 #' when `standardize_X` is `TRUE`. When `X_mean` and `X_std` are supplied they
 #' are reapplied without recomputing — used at prediction time on new data.
-#' Column names of `X` (or column names of the source data frame) are captured
-#' and returned as `feature_names`; they are propagated through `pic()` to
-#' annotate `fit$selected`, `coef()`, and the coefficient plot.
+#' Column means are computed whenever `X_mean` is not supplied, even without
+#' standardization. Column names of `X` (or column names of the source data
+#' frame) are captured and returned as `feature_names`; they are propagated
+#' through `pic()` to annotate `fit$selected`, `coef()`, and the coefficient
+#' plot.
 #'
 #' @param X A numeric matrix or coercible (data.frame).
 #' @param standardize_X Logical; standardize columns of `X`.
 #' @param X_mean Optional pre-computed column means.
 #' @param X_std Optional pre-computed column standard deviations.
+#' @param keep_feature_values Logical; also return a small grid of
+#'   representative values per column (used by Cox fits).
+#' @param expected_cols Optional required number of columns.
 #' @return A list with components `X`, `X_mean`, `X_std`, `feature_names`
-#'   (the column names of `X` if any, otherwise `NULL`).
+#'   (the column names of `X` if any, otherwise `NULL`) and `feature_values`
+#'   (`NULL` unless `keep_feature_values = TRUE`).
 #' @keywords internal
 check_X <- function(X,
                     standardize_X = TRUE,
                     X_mean = NULL,
-                    X_std = NULL) {
+                    X_std = NULL,
+                    keep_feature_values = FALSE,
+                    expected_cols = NULL) {
   # A bare numeric vector is interpreted as one observation, not one
   # feature.
   if (is.numeric(X) && is.null(dim(X))) {
@@ -35,6 +43,10 @@ check_X <- function(X,
   if (ncol(X) < 2L) {
     stop("`X` must have at least 2 columns.", call. = FALSE)
   }
+  if (!is.null(expected_cols) && ncol(X) != expected_cols) {
+    stop(sprintf("`newx` must have %d columns, as the training `X`; got %d.",
+                 expected_cols, ncol(X)), call. = FALSE)
+  }
 
   storage.mode(X) <- "double"
 
@@ -42,16 +54,15 @@ check_X <- function(X,
     stop("`X` contains NA, NaN, or Inf values.", call. = FALSE)
   }
 
-  # Fit-time only: pre-compute a small set of representative values per
+  # Cox fits only: pre-compute a small set of representative values per
   # column on the original scale, used downstream by
   # `feature_effects_on_survival()` so the caller does not have to keep
   # the training X around. Heuristic mirrors the runtime default of
   # that function: unique values when there are at most five (handy
   # for ordinal / categorical covariates), otherwise four equispaced
-  # empirical quantiles. Suppressed at predict time, detected via
-  # supplied X_mean / X_std.
+  # empirical quantiles.
   feature_values <- NULL
-  if (is.null(X_mean) && is.null(X_std)) {
+  if (keep_feature_values) {
     feature_values <- lapply(seq_len(ncol(X)), function(j) {
       col <- X[, j]
       uv  <- unique(col)
@@ -64,15 +75,19 @@ check_X <- function(X,
     })
   }
 
-  if (standardize_X) {
-    if (is.null(X_mean)) {
-      X_mean <- colMeans(X)
-    }
+  # Column means are kept even without standardization: the Cox profile
+  # curves of `feature_effects_on_survival()` hold covariates at them.
+  if (is.null(X_mean)) {
+    X_mean <- colMeans(X)
+  }
 
+  if (standardize_X) {
     if (is.null(X_std)) {
       X_centered <- sweep(X, 2L, X_mean, FUN = "-", check.margin = FALSE)
       X_std <- sqrt(colMeans(X_centered^2))
-      X_std[X_std == 0] <- 1
+      # Constant columns: rounding in the mean can leave a spurious sd of
+      # order eps * |mean|. They are centered to zero and left unscaled.
+      X_std[X_std <= 1e-12 * abs(X_mean)] <- 1
     }
 
     X <- sweep(X, 2L, X_mean, FUN = "-", check.margin = FALSE)
@@ -86,6 +101,9 @@ check_X <- function(X,
        feature_values = feature_values)
 }
 #' Validate response according to its distributional kind.
+#'
+#' A binary response may also be logical (`FALSE`/`TRUE` mapped to `0`/`1`)
+#' or a two-level factor (first level mapped to `0`, second to `1`).
 #'
 #' @param y Response vector or 2-column matrix (survival).
 #' @param n_samples Expected number of observations.
@@ -109,6 +127,9 @@ check_y <- function(y,
     storage.mode(y) <- "double"
     return(y)
   }
+
+  if (y_kind == "binary")
+    y <- .as_binary01(y)
   
   if (is.matrix(y) && (ncol(y) == 1L || nrow(y) == 1L))
     y <- as.numeric(y)
@@ -134,9 +155,34 @@ check_y <- function(y,
   stop(sprintf("Unknown `y_kind` '%s'.", y_kind), call. = FALSE)
 }
 
+# Map a logical or two-level factor response to 0/1, as glmnet does:
+# FALSE/TRUE -> 0/1, first/second factor level -> 0/1. `levels` imposes the
+# training levels when mapping a new response. Other inputs are returned
+# unchanged for the numeric checks of `check_y()`.
+.as_binary01 <- function(y, levels = NULL) {
+  if (is.logical(y)) {
+    if (anyNA(y))
+      stop("`y` contains NA values.", call. = FALSE)
+    return(as.integer(y))
+  }
+  if (is.factor(y)) {
+    lv <- if (is.null(levels)) levels(y) else levels
+    if (length(lv) != 2L)
+      stop("A factor `y` must have exactly two levels for the binomial ",
+           "family.", call. = FALSE)
+    idx <- match(as.character(y), lv)
+    if (anyNA(idx))
+      stop("`y` contains NA values or values outside the levels ",
+           paste0("'", lv, "'", collapse = ", "), ".", call. = FALSE)
+    return(idx - 1L)
+  }
+  y
+}
+
 #' Joint validation/preprocessing of `(X, y)`.
 #'
 #' For survival data, rows of `X` and `y` are sorted by ascending time.
+#' For a factor binary response, its two levels are returned as `y_levels`.
 #'
 #' @keywords internal
 check_Xy <- function(X,
@@ -144,11 +190,14 @@ check_Xy <- function(X,
                      y_kind,
                      standardize_X = TRUE,
                      X_mean = NULL,
-                     X_std = NULL) {
+                     X_std = NULL,
+                     keep_feature_values = FALSE) {
   px <- check_X(X,
                 standardize_X = standardize_X,
                 X_mean = X_mean,
-                X_std = X_std)
+                X_std = X_std,
+                keep_feature_values = keep_feature_values)
+  y_levels <- if (y_kind == "binary" && is.factor(y)) levels(y) else NULL
   y <- check_y(y, n_samples = nrow(px$X), y_kind = y_kind)
   
   if (y_kind == "survival") {
@@ -163,6 +212,7 @@ check_Xy <- function(X,
     X_std = px$X_std,
     y = y,
     feature_names = px$feature_names,
-    feature_values = px$feature_values
+    feature_values = px$feature_values,
+    y_levels = y_levels
   )
 }

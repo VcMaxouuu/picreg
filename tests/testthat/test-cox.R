@@ -48,3 +48,53 @@ test_that("predict(type='survival') returns time and survival of the right shape
   expect_equal(ncol(sf$survival), 5L)
   expect_equal(nrow(sf$survival), length(sf$time))
 })
+
+test_that("concordance_index matches a brute-force count, ties included", {
+  set.seed(44)
+  n <- 150
+  times <- round(rexp(n), 1)
+  events <- rbinom(n, 1, 0.6)
+  predictions <- round(rnorm(n), 1)
+
+  num <- 0; den <- 0
+  for (i in which(events == 1)) {
+    for (j in seq_len(n)) {
+      if (i != j && (times[i] < times[j] ||
+                     (times[i] == times[j] && events[j] == 0))) {
+        den <- den + 1
+        num <- num + (predictions[i] > predictions[j]) +
+          0.5 * (predictions[i] == predictions[j])
+      }
+    }
+  }
+  expect_equal(concordance_index(times, events, predictions), num / den)
+  expect_equal(concordance_index(times, rep(0, n), predictions), 0)
+  expect_error(concordance_index(times, events, predictions[-1]),
+               "same length")
+})
+
+test_that("cox_partial_log_likelihood matches the Breslow definition", {
+  set.seed(45)
+  n <- 120
+  times <- round(rexp(n), 1)
+  events <- rbinom(n, 1, 0.6)
+  predictions <- rnorm(n)
+
+  brute <- -sum(vapply(which(events == 1), function(i) {
+    predictions[i] - log(sum(exp(predictions[times >= times[i]])))
+  }, numeric(1L))) / n
+  expect_equal(cox_partial_log_likelihood(times, events, predictions), brute)
+})
+
+test_that("Cox predict(type='response') is the relative risk; coef() has no intercept", {
+  data(CoxExample)
+  fit <- pic(CoxExample$X, CoxExample$y, family = "cox", lambda = 0.05)
+  newx <- CoxExample$X[1:4, ]
+  expect_equal(predict(fit, newx, type = "response"),
+               exp(predict(fit, newx, type = "link")))
+
+  co <- coef(fit)
+  expect_equal(dim(co), c(ncol(CoxExample$X), 1L))
+  expect_false("(Intercept)" %in% rownames(co))
+  expect_equal(rownames(co), colnames(CoxExample$X))
+})

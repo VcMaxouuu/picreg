@@ -17,7 +17,8 @@ standardized scale used internally during fitting. Default \code{FALSE}
 }
 \value{
 A sparse \code{(p + 1)} by \code{1} matrix of class \code{"dgCMatrix"}, with row
-names \verb{c("(Intercept)", <variables>)} and column name \code{"coefficient"}.
+names \verb{c("(Intercept)", <variables>)} and column name \code{"coefficient"}
+(\code{p} by \code{1}, without the intercept row, for Cox fits).
 Use \code{as.numeric()} to obtain a plain numeric vector, or
 \code{which(coef(fit) != 0)} to list the selected entries.
 }
@@ -25,8 +26,9 @@ Use \code{as.numeric()} to obtain a plain numeric vector, or
 Returns the fitted coefficients as a one-column \strong{sparse matrix} of class
 \code{"dgCMatrix"} (from the \pkg{Matrix} package), mirroring the output of
 \code{coef()} for \pkg{glmnet}. The first row is the intercept, labeled
-\code{"(Intercept)"} (value \code{0} when no intercept was fitted); the remaining
-rows are the predictors. Row names are taken from the column names of \code{X}
+\code{"(Intercept)"}; the remaining rows are the predictors. Cox fits have no
+intercept row, the Cox model being invariant to a shift of the linear
+predictor. Row names are taken from the column names of \code{X}
 when available (matrix \code{colnames(X)} or data-frame column names) and
 otherwise default to \verb{V1, ..., Vp}. Zero coefficients are stored implicitly
 and printed as \code{"."}, which keeps the display compact in high dimensions.
@@ -37,7 +39,10 @@ raw coefficients live on the standardized scale. By default this method
 rescales them back to the \strong{original scale} of \code{X} — the values to
 plug into the un-standardized design for prediction — via
 \deqn{beta\_orig = beta / s \quad intercept\_orig = intercept - sum(m * beta\_orig)}
-where \code{m} and \code{s} are the column mean and standard deviation. Pass
+where \code{m} and \code{s} are the column mean and standard deviation. The
+intercept absorbs the centering even for fits with \code{intercept = FALSE},
+so that the coefficients reproduce \code{\link[=predict.pic]{predict.pic()}}. Pass
 \code{standardized = TRUE} to skip the rescaling and return the raw fit
-values (identical to \code{fit$beta}).
+values (identical to \code{fit$beta}, with intercept \code{0} when none was
+fitted).
 }

@@ -93,3 +93,50 @@ test_that("coef.pic falls back to V1..Vp without column names", {
   expect_equal(rownames(co)[-1L], paste0("V", seq_len(p)))
   expect_type(fit$selected, "integer")
 })
+
+test_that("pic() stores the call and convergence information", {
+  set.seed(5)
+  X <- matrix(rnorm(400), 40, 10)
+  y <- as.numeric(X[, 1] + rnorm(40))
+  fit <- pic(X, y, lambda_n_simu = 100L)
+
+  expect_true(is.call(fit$call))
+  expect_true(fit$converged)
+  expect_true(fit$n_iter >= 1L)
+  expect_null(dim(fit$beta))   # plain numeric vector
+  expect_warning(pic(X, y, lambda = 0.01, maxit = 2L, path_length = 1L),
+                 "did not converge")
+})
+
+test_that("SCAD / MCP start from the l1 solution at the target lambda", {
+  set.seed(6)
+  n <- 100; p <- 60
+  X <- matrix(rnorm(n * p), n, p)
+  b <- numeric(p); b[1:5] <- c(1.5, -1, 1, -0.8, 0.6)
+  y <- as.numeric(X %*% b + rnorm(n))
+  lam <- 0.12
+
+  for (pen in c("scad", "mcp")) {
+    fit_pen <- pic(X, y, penalty = pen, lambda = lam)
+    fit_l1  <- pic(X, y, penalty = "lasso", lambda = lam)
+    prep <- picreg:::check_Xy(X, y, "continuous")
+    stage <- picreg:::fista(prep$X, prep$y, picreg:::get_family("gaussian"),
+                            picreg:::get_penalty(pen), lam,
+                            rel_tol = 1e-5, max_iter = 1000L,
+                            coef_init = fit_l1$beta,
+                            intercept_init = fit_l1$intercept)
+    expect_equal(fit_pen$beta, as.numeric(stage$coef))
+  }
+})
+
+test_that("coef() reproduces predict() when intercept = FALSE on uncentered data", {
+  set.seed(7)
+  n <- 60; p <- 6
+  X <- matrix(rnorm(n * p, mean = 3), n, p)
+  y <- as.numeric(X[, 1] + rnorm(n))
+  fit <- pic(X, y, intercept = FALSE, lambda = 0.05)
+
+  co <- as.numeric(coef(fit))
+  expect_equal(as.numeric(co[1] + X %*% co[-1]),
+               predict(fit, X, type = "link"))
+})

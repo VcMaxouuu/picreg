@@ -463,7 +463,7 @@ plot.pic.phase_transition <- function(
 #' vertical lines are added per panel:
 #' * \eqn{\hat\lambda^{\rm PDB}_\alpha} - solid navy, the empirical (1 - alpha)
 #'   quantile of `"mc_exact"` (what pic would actually use).
-#' * \eqn{\hat\lambda_{analytical}} - dashed black, the Bonferroni
+#' * \eqn{\hat\lambda_{analytical}} - dotted black, the Bonferroni
 #'   closed-form bound.
 #'
 #' @param x An object returned by [pdb_asymptotic()].

@@ -4,9 +4,18 @@
 \alias{check_Xy}
 \title{Joint validation/preprocessing of \verb{(X, y)}.}
 \usage{
-check_Xy(X, y, y_kind, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
+check_Xy(
+  X,
+  y,
+  y_kind,
+  standardize_X = TRUE,
+  X_mean = NULL,
+  X_std = NULL,
+  keep_feature_values = FALSE
+)
 }
 \description{
 For survival data, rows of \code{X} and \code{y} are sorted by ascending time.
+For a factor binary response, its two levels are returned as \code{y_levels}.
 }
 \keyword{internal}

@@ -4,7 +4,14 @@
 \alias{check_X}
 \title{Validate and optionally standardize the design matrix.}
 \usage{
-check_X(X, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
+check_X(
+  X,
+  standardize_X = TRUE,
+  X_mean = NULL,
+  X_std = NULL,
+  keep_feature_values = FALSE,
+  expected_cols = NULL
+)
 }
 \arguments{
 \item{X}{A numeric matrix or coercible (data.frame).}
@@ -14,17 +21,25 @@ check_X(X, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
 \item{X_mean}{Optional pre-computed column means.}
 
 \item{X_std}{Optional pre-computed column standard deviations.}
+
+\item{keep_feature_values}{Logical; also return a small grid of
+representative values per column (used by Cox fits).}
+
+\item{expected_cols}{Optional required number of columns.}
 }
 \value{
 A list with components \code{X}, \code{X_mean}, \code{X_std}, \code{feature_names}
-(the column names of \code{X} if any, otherwise \code{NULL}).
+(the column names of \code{X} if any, otherwise \code{NULL}) and \code{feature_values}
+(\code{NULL} unless \code{keep_feature_values = TRUE}).
 }
 \description{
 Standardizes columns to zero mean and unit variance (population sd; \code{n} divisor)
 when \code{standardize_X} is \code{TRUE}. When \code{X_mean} and \code{X_std} are supplied they
 are reapplied without recomputing — used at prediction time on new data.
-Column names of \code{X} (or column names of the source data frame) are captured
-and returned as \code{feature_names}; they are propagated through \code{pic()} to
-annotate \code{fit$selected}, \code{coef()}, and the coefficient plot.
+Column means are computed whenever \code{X_mean} is not supplied, even without
+standardization. Column names of \code{X} (or column names of the source data
+frame) are captured and returned as \code{feature_names}; they are propagated
+through \code{pic()} to annotate \code{fit$selected}, \code{coef()}, and the coefficient
+plot.
 }
 \keyword{internal}

@@ -14,8 +14,11 @@ concordance_index(times, events, predictions)
 \item{predictions}{Risk scores; higher = higher risk = shorter survival.}
 }
 \value{
-Numeric scalar in \verb{[0, 1]}.
+Numeric scalar in \verb{[0, 1]} (\code{0} when no pair is comparable).
 }
 \description{
-Harrell's concordance index.
+A pair \eqn{(i, j)} is comparable when \eqn{i} has an event and either
+\eqn{t_i < t_j}, or \eqn{t_i = t_j} and \eqn{j} is censored. It is
+concordant when \eqn{i} has the higher risk score; tied scores count
+\eqn{1/2}. Computed in \eqn{O(n \log n)}.
 }

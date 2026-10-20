@@ -18,8 +18,10 @@ assess(object, ...)
 evaluated, with the same columns as the training data.}
 
 \item{newy}{Response on the new observations. Numeric vector for
-all families except Cox; for Cox, a two-column matrix
-\verb{(time, event)} matching the training response format.}
+all families except Cox (logical or factor values are accepted for
+binomial fits and mapped to \code{0}/\code{1} as at training); for Cox, a
+two-column matrix \verb{(time, event)} matching the training response
+format.}
 
 \item{true_features}{Optional integer or character vector listing
 the indices (or names) of the true active variables. When
@@ -42,8 +44,8 @@ The metrics depend on the family:
 \item{\code{"poisson"}}{MSE, MAE, Poisson deviance.}
 \item{\code{"exponential"}}{MSE, MAE, Exponential deviance.}
 \item{\code{"gumbel"}}{MSE, MAE, deviance computed from the per-sample
-negative log-likelihood with a moment estimate of the scale
-parameter \eqn{\hat\sigma = \mathrm{sd}(y - \hat\eta)\sqrt{6}/\pi}.}
+negative log-likelihood with the scale parameter profiled at its
+maximum-likelihood estimate.}
 \item{\code{"cox"}}{Harrell's C-index and the Breslow partial
 log-likelihood (negative, normalized by \code{n}).}
 }

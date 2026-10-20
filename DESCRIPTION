@@ -1,8 +1,8 @@
 Package: picreg
 Type: Package
 Title: Variable Selection using the Pivotal Information Criterion
-Version: 0.1.4
-Date: 2026-07-20
+Version: 0.2.0
+Date: 2026-10-20
 Authors@R: c(
     person("Maxime", "van Cutsem",
            role  = c("aut", "cre"),
@@ -34,9 +34,6 @@ Imports:
     stats,
     graphics,
     grDevices,
-    parallel,
-    future,
-    future.apply,
     Matrix,
     Rcpp (>= 1.0.10)
 LinkingTo:
@@ -47,7 +44,9 @@ Suggests:
     knitr,
     rmarkdown,
     xfun,
-    glmnet
+    glmnet,
+    future,
+    future.apply
 VignetteBuilder: knitr
 SystemRequirements: C++17
 RoxygenNote: 8.0.0

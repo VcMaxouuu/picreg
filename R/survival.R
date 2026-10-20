@@ -8,32 +8,24 @@ NULL
 
 #' Harrell's concordance index.
 #'
+#' A pair \eqn{(i, j)} is comparable when \eqn{i} has an event and either
+#' \eqn{t_i < t_j}, or \eqn{t_i = t_j} and \eqn{j} is censored. It is
+#' concordant when \eqn{i} has the higher risk score; tied scores count
+#' \eqn{1/2}. Computed in \eqn{O(n \log n)}.
+#'
 #' @param times Survival times (length `n`).
 #' @param events Event indicators (0 or 1; length `n`).
 #' @param predictions Risk scores; higher = higher risk = shorter survival.
-#' @return Numeric scalar in `[0, 1]`.
+#' @return Numeric scalar in `[0, 1]` (`0` when no pair is comparable).
 #' @export
 concordance_index <- function(times, events, predictions) {
+  times <- as.numeric(times)
   events <- as.numeric(events)
-  ev_idx <- which(events == 1)
-  if (length(ev_idx) == 0L) return(0.0)
-
-  ti <- times[ev_idx]; pi_ <- predictions[ev_idx]
-  tj <- times;          pj <- predictions; ej <- events
-
-  comp <- outer(ti, tj, "<") |
-    (outer(ti, tj, "==") & matrix(ej == 0, nrow = length(ti), ncol = length(tj), byrow = TRUE))
-  # remove self-comparisons
-  for (k in seq_along(ev_idx)) comp[k, ev_idx[k]] <- FALSE
-
-  n_comp <- sum(comp)
-  if (n_comp == 0L) return(0.0)
-
-  conc <- outer(pi_, pj, ">")
-  ties <- outer(pi_, pj, "==")
-  score <- sum(ifelse(comp, ifelse(conc, 1.0, 0.0), 0.0)) +
-    0.5 * sum(ifelse(comp, ifelse(ties, 1.0, 0.0), 0.0))
-  score / n_comp
+  predictions <- as.numeric(predictions)
+  if (length(events) != length(times) || length(predictions) != length(times))
+    stop("`times`, `events`, and `predictions` must have the same length.",
+         call. = FALSE)
+  concordance_index_cpp(times, events, predictions)
 }
 
 #' Breslow partial log-likelihood (negative, normalized by `n`).
@@ -46,21 +38,14 @@ concordance_index <- function(times, events, predictions) {
 cox_partial_log_likelihood <- function(times, events, predictions) {
   ord <- order(times, decreasing = TRUE)
   t_s <- times[ord]; p_s <- predictions[ord]; e_s <- as.numeric(events[ord])
-  exp_p <- exp(p_s)
-  utimes <- unique(t_s)
-  G <- length(utimes)
-
-  group_uncens <- numeric(G); group_exp <- numeric(G); group_events <- integer(G)
-  for (i in seq_len(G)) {
-    mask <- (t_s == utimes[i])
-    group_uncens[i] <- sum(p_s[mask] * e_s[mask])
-    group_exp[i]    <- sum(exp_p[mask])
-    group_events[i] <- sum(e_s[mask])
-  }
-  cum_exp <- cumsum(group_exp)
-  log_term <- ifelse(group_events > 0, group_events * log(cum_exp), 0)
-  loss_contrib <- group_uncens - log_term
-  -sum(loss_contrib) / length(times)
+  # Tie groups by decreasing time; exponentials shifted by max(p) for
+  # numerical stability.
+  m <- max(p_s)
+  grp <- rowsum(cbind(p_s * e_s, exp(p_s - m), e_s), t_s, reorder = FALSE)
+  log_risk <- log(cumsum(grp[, 2L])) + m
+  d <- grp[, 3L]
+  ev <- d > 0
+  -(sum(grp[, 1L]) - sum(d[ev] * log_risk[ev])) / length(times)
 }
 
 #' Breslow baseline cumulative hazard and survival.
@@ -166,27 +151,16 @@ feature_effects_on_survival <- function(object, idx, values = NULL) {
   }
   values <- as.numeric(values)
 
-  mean_row <- matrix(X_mean, nrow = 1L,
-                     dimnames = list(NULL, nm_fit))
+  # One profile subject per value: covariates at their means, the chosen
+  # one set to the value.
+  Xv <- matrix(X_mean, nrow = length(values), ncol = p, byrow = TRUE,
+               dimnames = list(NULL, nm_fit))
+  Xv[, idx_int] <- values
+  sf <- predict(object, Xv, type = "survival")
 
-  # First call seeds the time grid; remaining values reuse the grid.
-  Xv <- mean_row
-  Xv[1L, idx_int] <- values[1L]
-  sf1 <- predict(object, Xv, type = "survival")
-
-  surv <- matrix(0.0, nrow = length(sf1$time), ncol = length(values))
-  surv[, 1L] <- sf1$survival[, 1L]
-
-  if (length(values) > 1L) {
-    for (k in 2:length(values)) {
-      Xv[1L, idx_int] <- values[k]
-      sfk <- predict(object, Xv, type = "survival")
-      surv[, k] <- sfk$survival[, 1L]
-    }
-  }
-
+  surv <- sf$survival
   colnames(surv) <- sprintf("%s = %s", feature_name,
                             formatC(values, digits = 6, format = "g"))
 
-  list(time = sf1$time, survival = surv)
+  list(time = sf$time, survival = surv)
 }

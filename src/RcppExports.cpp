@@ -24,6 +24,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// gumbel_profile_cpp
+Rcpp::List gumbel_profile_cpp(const arma::vec& y, const arma::vec& lp);
+RcppExport SEXP _picreg_gumbel_profile_cpp(SEXP ySEXP, SEXP lpSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type lp(lpSEXP);
+    rcpp_result_gen = Rcpp::wrap(gumbel_profile_cpp(y, lp));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gumbel_null_fit_cpp
+Rcpp::List gumbel_null_fit_cpp(const arma::vec& y);
+RcppExport SEXP _picreg_gumbel_null_fit_cpp(SEXP ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type y(ySEXP);
+    rcpp_result_gen = Rcpp::wrap(gumbel_null_fit_cpp(y));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fista_cpp
 Rcpp::List fista_cpp(const arma::mat& X, const arma::vec& y, std::string family_name, std::string penalty_name, double lambda_reg, double scad_a, double mcp_gamma, bool fit_intercept, double rel_tol, double step_size_init, int max_iter, double eta_param, double delta_param, double rho, double bb_growth_cap, Rcpp::Nullable<Rcpp::NumericVector> coef_init, Rcpp::Nullable<double> intercept_init);
 RcppExport SEXP _picreg_fista_cpp(SEXP XSEXP, SEXP ySEXP, SEXP family_nameSEXP, SEXP penalty_nameSEXP, SEXP lambda_regSEXP, SEXP scad_aSEXP, SEXP mcp_gammaSEXP, SEXP fit_interceptSEXP, SEXP rel_tolSEXP, SEXP step_size_initSEXP, SEXP max_iterSEXP, SEXP eta_paramSEXP, SEXP delta_paramSEXP, SEXP rhoSEXP, SEXP bb_growth_capSEXP, SEXP coef_initSEXP, SEXP intercept_initSEXP) {
@@ -131,15 +154,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// concordance_index_cpp
+double concordance_index_cpp(const arma::vec& times, const arma::vec& events, const arma::vec& predictions);
+RcppExport SEXP _picreg_concordance_index_cpp(SEXP timesSEXP, SEXP eventsSEXP, SEXP predictionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type times(timesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type events(eventsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type predictions(predictionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(concordance_index_cpp(times, events, predictions));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_picreg_cox_null_grad_norms_cpp", (DL_FUNC) &_picreg_cox_null_grad_norms_cpp, 3},
+    {"_picreg_gumbel_profile_cpp", (DL_FUNC) &_picreg_gumbel_profile_cpp, 2},
+    {"_picreg_gumbel_null_fit_cpp", (DL_FUNC) &_picreg_gumbel_null_fit_cpp, 1},
     {"_picreg_fista_cpp", (DL_FUNC) &_picreg_fista_cpp, 17},
     {"_picreg_fista_cox_cpp", (DL_FUNC) &_picreg_fista_cox_cpp, 15},
     {"_picreg_lambda_max_cpp", (DL_FUNC) &_picreg_lambda_max_cpp, 4},
     {"_picreg_lambda_max_cox_cpp", (DL_FUNC) &_picreg_lambda_max_cox_cpp, 3},
     {"_picreg_pdb_mc_gaussian_cpp", (DL_FUNC) &_picreg_pdb_mc_gaussian_cpp, 4},
     {"_picreg_pdb_mc_exact_cpp", (DL_FUNC) &_picreg_pdb_mc_exact_cpp, 4},
+    {"_picreg_concordance_index_cpp", (DL_FUNC) &_picreg_concordance_index_cpp, 3},
     {NULL, NULL, 0}
 };
 

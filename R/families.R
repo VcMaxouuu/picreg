@@ -5,9 +5,9 @@
 #'   * `g`    - mean-function link (object with `name` and callable `fn`).
 #'              `g$fn(eta)` is applied at predict time to obtain the mean
 #'              response.
-#'   * `phi`  - variance-stabilizing transform (object with `name`).
-#'              Purely informational on the R side; the actual stabilization
-#'              happens inside the C++ math.
+#'   * `phi`  - output transform applied to the base loss (object with
+#'              `name`). Purely informational on the R side; the actual
+#'              transform is applied inside the C++ math.
 #'
 #' Typing `fit$family` gives a one-glance summary of the model's family
 #' (see [print.pic.family()]). The actual loss / gradient math lives in C++:
@@ -27,6 +27,8 @@ NULL
 .sqrt_link     <- list(name = "sqrt",     fn = function(x)   sqrt(x))
 
 # ---- family descriptors ------------------------------------------------
+# Prefixed so that they do not mask stats::gaussian() and friends inside
+# the package namespace.
 
 .make_family <- function(name, g, phi) {
   structure(
@@ -35,12 +37,12 @@ NULL
   )
 }
 
-gaussian    <- function() .make_family("gaussian",    g = .identity_link, phi = .sqrt_link)
-binomial    <- function() .make_family("binomial",    g = .logistic_link, phi = .identity_link)
-poisson     <- function() .make_family("poisson",     g = .exp_link,      phi = .identity_link)
-exponential <- function() .make_family("exponential", g = .exp_link,      phi = .identity_link)
-gumbel      <- function() .make_family("gumbel",      g = .identity_link, phi = .exp_link)
-cox         <- function() .make_family("cox",         g = .identity_link, phi = .sqrt_link)
+.family_gaussian    <- function() .make_family("gaussian",    g = .identity_link, phi = .sqrt_link)
+.family_binomial    <- function() .make_family("binomial",    g = .logistic_link, phi = .identity_link)
+.family_poisson     <- function() .make_family("poisson",     g = .exp_link,      phi = .identity_link)
+.family_exponential <- function() .make_family("exponential", g = .exp_link,      phi = .identity_link)
+.family_gumbel      <- function() .make_family("gumbel",      g = .identity_link, phi = .exp_link)
+.family_cox         <- function() .make_family("cox",         g = .identity_link, phi = .sqrt_link)
 
 # ---- registry / dispatcher ---------------------------------------------
 
@@ -65,25 +67,25 @@ get_family <- function(family) {
   )
   switch(
     family,
-    gaussian    = gaussian(),
-    binomial    = binomial(),
-    poisson     = poisson(),
-    exponential = exponential(),
-    gumbel      = gumbel(),
-    cox         = cox()
+    gaussian    = .family_gaussian(),
+    binomial    = .family_binomial(),
+    poisson     = .family_poisson(),
+    exponential = .family_exponential(),
+    gumbel      = .family_gumbel(),
+    cox         = .family_cox()
   )
 }
 
 #' Pretty-print a pic family descriptor.
 #'
-#' Three-line summary showing the family name and its (g, phi) link pair.
+#' One-line summary showing the family name and its (g, phi) pair.
 #'
 #' @param x A `pic.family` object.
 #' @param ... Ignored.
 #' @return Invisibly returns `x`.
 #' @export
 print.pic.family <- function(x, ...) {
-  cat("family: ", x$name, " (link g = ", x$g$name, ", phi = ", x$phi$name, ")",
+  cat("family: ", x$name, " (link g = ", x$g$name, ", phi = ", x$phi$name, ")\n",
       sep = "")
   invisible(x)
 }

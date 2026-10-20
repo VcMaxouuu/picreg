@@ -94,8 +94,8 @@ static VResult v_branch(const mat& X, const picr::cox::CoxData& cd,
                         double bb_growth_cap, double alpha_pen_cap,
                         int max_inner = 30) {
   vec lp_x = X * x_coef;
-  double f_x = picr::cox::evaluate(cd, lp_x);
-  picr::cox::CoxGradResult gx = picr::cox::grad(X, cd, lp_x);
+  picr::cox::CoxValueGradResult gx = picr::cox::value_grad(X, cd, lp_x);
+  double f_x = gx.value;
 
   alpha_x = bb_step_coef(x_coef, y_prev_coef, gx.coef, grad_y_prev,
                          alpha_x, bb_growth_cap, alpha_pen_cap);
@@ -143,12 +143,12 @@ Rcpp::List fista_cox_cpp(const arma::mat& X,
                           double scad_a       = 3.7,
                           double mcp_gamma    = 3.0,
                           double rel_tol      = 1e-4,
-                          double step_size_init = 1e-2,
+                          double step_size_init = 1e-1,
                           int    max_iter     = 500,
                           double eta_param    = 0.8,
                           double delta_param  = 1e-4,
                           double rho          = 0.5,
-                          double bb_growth_cap = 2.0,
+                          double bb_growth_cap = 4.0,
                           Rcpp::Nullable<Rcpp::NumericVector> coef_init = R_NilValue) {
 
   picr::cox::CoxData cd = picr::cox::make_data(times, events);
@@ -169,21 +169,18 @@ Rcpp::List fista_cox_cpp(const arma::mat& X,
   vec y_prev_coef = x_coef;
 
   vec lp = X * x_coef;
-  picr::cox::CoxGradResult g0 = picr::cox::grad(X, cd, lp);
+  picr::cox::CoxValueGradResult g0 = picr::cox::value_grad(X, cd, lp);
   vec grad_y_prev = g0.coef;
 
   double t_prev = 0.0, t_curr = 1.0;
-  double F_x = picr::cox::evaluate(cd, lp) + pen.evaluate(x_coef, lambda_reg, pen.param);
+  double F_x = g0.value + pen.evaluate(x_coef, lambda_reg, pen.param);
   double c_k = F_x, q_k = 1.0;
 
   double alpha_y = step_size_init;
   double alpha_x = step_size_init;
 
-  std::vector<double>           objective_path;
-  std::vector<std::vector<int>> features_path;
-  std::vector<double>           gradient_mapping_path;
-  int    n_iter = 0;
-  std::string status = "max_iter_reached";
+  int  n_iter    = 0;
+  bool converged = false;
 
   for (int k = 1; k <= max_iter; ++k) {
     double a = t_prev / t_curr;
@@ -192,8 +189,8 @@ Rcpp::List fista_cox_cpp(const arma::mat& X,
     vec y_coef = x_coef + a * (z_coef - x_coef) + b * (x_coef - x_prev_coef);
 
     vec lp_y = X * y_coef;
-    double f_y = picr::cox::evaluate(cd, lp_y);
-    picr::cox::CoxGradResult gy = picr::cox::grad(X, cd, lp_y);
+    picr::cox::CoxValueGradResult gy = picr::cox::value_grad(X, cd, lp_y);
+    double f_y = gy.value;
 
     alpha_y = bb_step_coef(y_coef, y_prev_coef, gy.coef, grad_y_prev,
                            alpha_y, bb_growth_cap, alpha_pen_cap);
@@ -231,25 +228,16 @@ Rcpp::List fista_cox_cpp(const arma::mat& X,
       }
     }
 
-    objective_path.push_back(F_next);
-    {
-      std::vector<int> nz;
-      nz.reserve(x_next_coef.n_elem);
-      for (uword i = 0; i < x_next_coef.n_elem; ++i)
-        if (x_next_coef(i) != 0.0) nz.push_back((int) i + 1);
-      features_path.push_back(nz);
-    }
     n_iter = k;
 
     vec    G_coef    = (gm_anchor_coef - x_next_coef) / gm_alpha;
     double G_norm    = std::sqrt(dot(G_coef, G_coef));
     double beta_norm = std::sqrt(dot(gm_anchor_coef, gm_anchor_coef));
     double rel_gm    = G_norm / std::max(beta_norm, 1.0);
-    gradient_mapping_path.push_back(rel_gm);
 
     if (rel_gm < rel_tol) {
       x_coef = x_next_coef;
-      status = "converged";
+      converged = true;
       break;
     }
 
@@ -268,20 +256,10 @@ Rcpp::List fista_cox_cpp(const arma::mat& X,
     q_k = q_next;
   }
 
-  Rcpp::List info = Rcpp::List::create(
-    Rcpp::Named("n_iter")                = n_iter,
-    Rcpp::Named("lambda")                = lambda_reg,
-    Rcpp::Named("objective_path")        = objective_path,
-    Rcpp::Named("features_path")         = features_path,
-    Rcpp::Named("gradient_mapping_path") = gradient_mapping_path,
-    Rcpp::Named("final_gradient_mapping") =
-        gradient_mapping_path.empty() ? NA_REAL : gradient_mapping_path.back(),
-    Rcpp::Named("status")                = status
-  );
-
   return Rcpp::List::create(
     Rcpp::Named("coef")      = x_coef,
     Rcpp::Named("intercept") = R_NilValue,   // Cox: no intercept
-    Rcpp::Named("info")      = info
+    Rcpp::Named("n_iter")    = n_iter,
+    Rcpp::Named("converged") = converged
   );
 }

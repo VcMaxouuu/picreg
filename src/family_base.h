@@ -30,6 +30,13 @@ struct GradResult {
   double    intercept;
 };
 
+// Joint loss/gradient evaluation.  Families for which both quantities share
+// expensive intermediate work can provide this optional fast path.
+struct ValueGradResult {
+  double     value;
+  GradResult grad;
+};
+
 // Family handle: a table of function pointers, populated once per fit by
 // `get_family(name)` and then consumed by `lambda_pdb` / `fista` without
 // further dispatch.
@@ -40,13 +47,17 @@ struct GradResult {
 //   residual          element-wise residual r used internally for `grad`;
 //                     X^T r yields the coefficient gradient.
 //   grad              full (coef, intercept) gradient at (X, y, lp).
-//   starting_intercept g^{-1}(mean(y)); the canonical intercept warm start.
+//   value_grad        optional joint evaluation fast path; nullptr when the
+//                     family has no expensive intermediates to share.
+//   starting_intercept null-model optimum used as the intercept warm start.
 //   generate_y        null draws (n x n_simu) for Monte Carlo selectors.
 struct Family {
   const char* name;
   double      (*evaluate)         (const arma::vec&, const arma::vec&);
   arma::vec   (*residual)         (const arma::vec&, const arma::vec&);
   GradResult  (*grad)             (const arma::mat&, const arma::vec&,
+                                   const arma::vec&);
+  ValueGradResult (*value_grad)   (const arma::mat&, const arma::vec&,
                                    const arma::vec&);
   double      (*starting_intercept)(const arma::vec&);
   arma::mat   (*generate_y)       (int n, int n_simu);
@@ -55,8 +66,8 @@ struct Family {
 // ---------- per-family declarations ---------------------------------------
 //
 // Each family lives in its own namespace and its own translation unit
-// (family_<name>.cpp). The five public methods follow the contract above;
-// see the corresponding .cpp for the closed-form derivations.
+// (family_<name>.cpp). The public methods follow the contract above; see
+// the corresponding .cpp for the closed-form derivations.
 
 namespace gaussian {
   double      evaluate         (const arma::vec& y, const arma::vec& lp);
@@ -95,11 +106,20 @@ namespace exponential {
 }
 
 namespace gumbel {
+  struct NullResult {
+    double    intercept;
+    double    sigma;
+    arma::vec residual;
+  };
+
   double      evaluate         (const arma::vec& y, const arma::vec& lp);
   arma::vec   residual         (const arma::vec& y, const arma::vec& lp);
   GradResult  grad             (const arma::mat& X, const arma::vec& y,
                                 const arma::vec& lp);
+  ValueGradResult value_grad   (const arma::mat& X, const arma::vec& y,
+                                const arma::vec& lp);
   double      starting_intercept(const arma::vec& y);
+  NullResult  null_fit         (const arma::vec& y);
   arma::mat   generate_y       (int n, int n_simu);
 }
 

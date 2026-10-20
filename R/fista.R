@@ -24,7 +24,9 @@
 #' @param rho Step-size reduction factor (< 1).
 #' @param bb_growth_cap Maximum BB step growth over the previous step.
 #' @param coef_init,intercept_init Optional warm starts.
-#' @return A list with `coef`, `intercept`, `info`.
+#' @return A list with `coef`, `intercept` (`NULL` without intercept),
+#'   `n_iter` (number of iterations run) and `converged` (whether `rel_tol`
+#'   was reached within `max_iter`).
 #' @keywords internal
 fista <- function(X, y, family, penalty, lambda_reg,
                   fit_intercept = TRUE,

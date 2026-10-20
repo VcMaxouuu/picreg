@@ -7,9 +7,10 @@
 lambda_pdb(
   X,
   family,
-  n_simu = 5000L,
+  n_simu = 2000L,
   alpha = 0.05,
-  method = c("mc_exact", "mc_gaussian", "analytical")
+  method = c("mc_exact", "mc_gaussian", "analytical"),
+  seed = NULL
 )
 }
 \arguments{
@@ -20,11 +21,15 @@ to zero mean and unit variance.}
 or a character string accepted by \code{\link[=get_family]{get_family()}}.}
 
 \item{n_simu}{Number of Monte Carlo simulations used by the stochastic
-methods. Ignored when \code{method = "analytical"}.}
+methods. Ignored when \code{method = "analytical"}. Default 2000.}
 
 \item{alpha}{Nominal tail probability used to define the quantile level.}
 
-\item{method}{One of "mc_exact", "mc_gaussian", or "analytical".}
+\item{method}{One of \code{"mc_exact"}, \code{"mc_gaussian"}, or \code{"analytical"}.}
+
+\item{seed}{Optional seed for the Monte Carlo draws, for a reproducible
+\eqn{\hat\lambda}. The caller's random stream is restored afterwards.
+Default \code{NULL} (no seeding).}
 }
 \value{
 An object of class \code{"pic.lambda_pdb"}.
@@ -33,7 +38,11 @@ An object of class \code{"pic.lambda_pdb"}.
 \code{NULL} for the analytical method.}
 \item{method}{Estimation method used.}
 \item{alpha}{Quantile level parameter.}
-\item{n_simu}{Number of Monte Carlo simulations.}
+\item{n_simu}{Number of Monte Carlo simulations (\code{NA} for the
+analytical method).}
+\item{seed}{The seed used, or \code{NULL}.}
+\item{family}{Name of the family.}
+\item{n, p}{Dimensions of \code{X}.}
 }
 \description{
 Computes the data-driven regularization parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}
@@ -65,7 +74,9 @@ Family-aware Monte Carlo. For each of the \code{n_simu} draws, a
 response vector is sampled under the null model
 (\eqn{\beta = 0}) of the chosen family; the family-specific
 gradient of the loss at \eqn{\beta = 0} is evaluated on the
-fixed design \eqn{X}, and its supremum norm is recorded. The
+fixed design \eqn{X}, and its supremum norm is recorded. For Gumbel,
+both null location and scale are estimated jointly by maximum
+likelihood for every draw. The
 empirical \eqn{(1 - \alpha)} quantile of the \code{n_simu} recorded
 norms is returned. Most accurate but slowest of the three.
 }
@@ -86,8 +97,9 @@ the standard Gaussian tail bound gives
 \deqn{\hat\lambda_\alpha^{\rm analytical} =
           \Phi^{-1}\!\left(1 - \alpha / (2p)\right)\, \sqrt{c(n) / n}.}
 Deterministic and \eqn{O(1)} — no simulation. Conservative
-(slightly over-estimates the true quantile) and gets looser as
-\eqn{p} grows, but useful when speed matters or when Monte
+(over-estimates the true quantile): nearly exact when the columns
+of \eqn{X} are weakly correlated, increasingly conservative under
+strong correlation. Useful when speed matters or when Monte
 Carlo is overkill.
 }
 }
@@ -103,11 +115,12 @@ factor \eqn{c(n)} depending on the family:
 
 \subsection{Computational cost}{
 
-Both Monte Carlo methods are dominated by a single \eqn{p \times n_{\rm simu}}
+Both Monte Carlo methods are dominated by the \eqn{p \times n_{\rm simu}}
 matrix product \eqn{X^\top R}, where \eqn{R} stacks the simulated
-residuals. This product is dispatched to BLAS as a single \eqn{\tt gemm},
-which is essentially as fast as a Monte Carlo selector can be on dense
-designs. For very large \eqn{n} or \eqn{p}, however, the constant
+residuals. This product is dispatched to BLAS as \eqn{\tt gemm} calls
+over blocks of draws, which bounds the memory footprint without changing
+the result, and is essentially as fast as a Monte Carlo selector can be
+on dense designs. For very large \eqn{n} or \eqn{p}, however, the constant
 becomes large and \code{"mc_exact"} may be unnecessarily expensive:
 
 \itemize{
@@ -116,8 +129,8 @@ and \code{"mc_gaussian"} gives essentially the same \eqn{\hat\lambda}
 as \code{"mc_exact"} at a fraction of the cost (no family-specific
 residual generation, fewer dependencies on \eqn{y}-draws).
 \item \code{"analytical"} is \eqn{O(1)} and useful as a quick upper
-bound — slightly conservative, but accurate enough for triage
-and for very high \eqn{p} where the Bonferroni tail is tight.
+bound — conservative, but accurate enough for triage and for
+weakly correlated designs, where the union bound is nearly tight.
 }
 
 Practical rule of thumb: prefer \code{"mc_exact"} for small to moderate
@@ -132,8 +145,8 @@ The level \eqn{\alpha} is the nominal Type-I error of the test of
 \eqn{H_0\!\colon \beta = 0}. By construction of the quantile,
 \deqn{\Pr\!\left(\left\|\nabla \ell_0\right\|_\infty
   > \hat\lambda^{\rm PDB}_\alpha \,\big|\, H_0\right) = \alpha,}
-so under the null model no variable enters the active set with
-probability at most \eqn{\alpha}. With the default
+so under the null model at least one variable enters the active set
+with probability at most \eqn{\alpha}. With the default
 \eqn{\alpha = 0.05}, this caps the false-discovery rate at \eqn{5\%}
 under the null: when the data carry no signal, picreg returns the
 empty support \eqn{95\%} of the time.

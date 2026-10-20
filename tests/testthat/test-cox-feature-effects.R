@@ -69,3 +69,22 @@ test_that("plot_survival_curves runs without error", {
   expect_silent(plot_survival_curves(sf))
   dev.off()
 })
+
+test_that("feature_effects_on_survival works without standardization", {
+  data(CoxExample)
+  fit_std <- pic(CoxExample$X, CoxExample$y, family = "cox", lambda = 0.05)
+  fit_raw <- suppressWarnings(
+    pic(CoxExample$X, CoxExample$y, family = "cox", lambda = 0.05,
+        standardize = FALSE)
+  )
+  feat <- fit_raw$selected[1L]
+  fx <- feature_effects_on_survival(fit_raw, idx = feat, values = c(-1, 1))
+  expect_equal(ncol(fx$survival), 2L)
+
+  # The single batched prediction matches one prediction per value.
+  X_mean <- colMeans(CoxExample$X)
+  row <- matrix(X_mean, 1L, dimnames = list(NULL, colnames(CoxExample$X)))
+  row[1L, feat] <- 1
+  expect_equal(unname(fx$survival[, 2L]),
+               as.numeric(predict(fit_raw, row, type = "survival")$survival))
+})

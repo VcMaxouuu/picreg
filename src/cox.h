@@ -62,6 +62,14 @@ struct CoxGradResult {
 };
 CoxGradResult grad(const arma::mat& X, const CoxData& cd, const arma::vec& lp);
 
+// Joint loss/gradient evaluation sharing a single pass over the risk sets.
+struct CoxValueGradResult {
+  double    value;
+  arma::vec coef;
+};
+CoxValueGradResult value_grad(const arma::mat& X, const CoxData& cd,
+                              const arma::vec& lp);
+
 }  // namespace picr::cox
 
 #endif

@@ -12,8 +12,11 @@ NULL
 #' @param object A fitted `pic` object.
 #' @param newx Matrix of new values at which predictions are to be made.
 #' @param type `"link"` (linear predictor), `"response"` (default; family
-#'   `g`-link applied), `"class"` (binomial only), or `"survival"` (Cox only;
-#'   returns a list with components `time` and `survival`).
+#'   `g`-link applied, and for Cox the relative risk \eqn{\exp(\eta)}, as
+#'   in \pkg{glmnet}), `"class"` (binomial only; `0`/`1` labels, where `1`
+#'   stands for `TRUE` or the second factor level of the training response),
+#'   or `"survival"` (Cox only; returns a list with components `time` and
+#'   `survival`).
 #' @param ... Unused; present for S3 method consistency.
 #' @return A numeric vector for types `"link"`, `"response"`, and `"class"`.
 #'   For `type = "survival"`, a list with `time` (length `K`) and `survival`
@@ -26,7 +29,8 @@ predict.pic <- function(object, newx,
   preproc <- attr(object, "preproc")
   px <- check_X(newx,
                 standardize_X = isTRUE(preproc$standardize),
-                X_mean = preproc$X_mean, X_std = preproc$X_std)
+                X_mean = preproc$X_mean, X_std = preproc$X_std,
+                expected_cols = length(object$beta))
   X <- px$X
 
   eta <- as.numeric(X %*% object$beta)
@@ -50,7 +54,9 @@ predict.pic <- function(object, newx,
     surv <- outer(S0, exp(eta), `^`)
     return(list(time = t, survival = surv))
   }
-  # type == "response"
+  # type == "response": mean response g(eta); for Cox, the relative risk.
+  if (inherits(object, "pic.cox"))
+    return(exp(eta))
   object$family$g$fn(eta)
 }
 
@@ -59,8 +65,9 @@ predict.pic <- function(object, newx,
 #' Returns the fitted coefficients as a one-column **sparse matrix** of class
 #' `"dgCMatrix"` (from the \pkg{Matrix} package), mirroring the output of
 #' `coef()` for \pkg{glmnet}. The first row is the intercept, labeled
-#' `"(Intercept)"` (value `0` when no intercept was fitted); the remaining
-#' rows are the predictors. Row names are taken from the column names of `X`
+#' `"(Intercept)"`; the remaining rows are the predictors. Cox fits have no
+#' intercept row, the Cox model being invariant to a shift of the linear
+#' predictor. Row names are taken from the column names of `X`
 #' when available (matrix `colnames(X)` or data-frame column names) and
 #' otherwise default to `V1, ..., Vp`. Zero coefficients are stored implicitly
 #' and printed as `"."`, which keeps the display compact in high dimensions.
@@ -70,9 +77,12 @@ predict.pic <- function(object, newx,
 #' rescales them back to the **original scale** of `X` — the values to
 #' plug into the un-standardized design for prediction — via
 #' \deqn{beta\_orig = beta / s \quad intercept\_orig = intercept - sum(m * beta\_orig)}
-#' where `m` and `s` are the column mean and standard deviation. Pass
+#' where `m` and `s` are the column mean and standard deviation. The
+#' intercept absorbs the centering even for fits with `intercept = FALSE`,
+#' so that the coefficients reproduce [predict.pic()]. Pass
 #' `standardized = TRUE` to skip the rescaling and return the raw fit
-#' values (identical to `fit$beta`).
+#' values (identical to `fit$beta`, with intercept `0` when none was
+#' fitted).
 #'
 #' @param object A fitted `pic` object.
 #' @param standardized Logical; if `TRUE`, return the coefficients on the
@@ -80,7 +90,8 @@ predict.pic <- function(object, newx,
 #'   (return coefficients on the original scale of `X`).
 #' @param ... Unused; present for S3 method consistency.
 #' @return A sparse `(p + 1)` by `1` matrix of class `"dgCMatrix"`, with row
-#'   names `c("(Intercept)", <variables>)` and column name `"coefficient"`.
+#'   names `c("(Intercept)", <variables>)` and column name `"coefficient"`
+#'   (`p` by `1`, without the intercept row, for Cox fits).
 #'   Use `as.numeric()` to obtain a plain numeric vector, or
 #'   `which(coef(fit) != 0)` to list the selected entries.
 #' @importFrom Matrix Matrix
@@ -91,22 +102,25 @@ coef.pic <- function(object, standardized = FALSE, ...) {
           preproc$feature_names
         else paste0("V", seq_along(object$beta))
 
-  beta <- object$beta
-  has_intercept <- !is.null(object$intercept)
-  intercept <- if (has_intercept) object$intercept else 0.0
+  beta <- as.numeric(object$beta)
+  intercept <- if (!is.null(object$intercept)) object$intercept else 0.0
 
   unstd <- !standardized && isTRUE(preproc$standardize) &&
     !is.null(preproc$X_std) && !is.null(preproc$X_mean)
   if (unstd) {
     beta <- beta / preproc$X_std
-    if (has_intercept) {
-      intercept <- intercept - sum(preproc$X_mean * beta)
-    }
+    # The fit uses centered columns: the original-scale intercept absorbs
+    # the centering, with or without a fitted intercept.
+    intercept <- intercept - sum(preproc$X_mean * beta)
   }
 
-  out <- Matrix::Matrix(c(intercept, as.numeric(beta)),
-                        ncol = 1L, sparse = TRUE)
-  dimnames(out) <- list(c("(Intercept)", nm), "coefficient")
+  if (inherits(object, "pic.cox")) {
+    out <- Matrix::Matrix(beta, ncol = 1L, sparse = TRUE)
+    dimnames(out) <- list(nm, "coefficient")
+  } else {
+    out <- Matrix::Matrix(c(intercept, beta), ncol = 1L, sparse = TRUE)
+    dimnames(out) <- list(c("(Intercept)", nm), "coefficient")
+  }
   out
 }
 
@@ -150,7 +164,12 @@ summary.pic <- function(object, standardized = FALSE, ...) {
   cv <- as.numeric(co)
   names(cv) <- rownames(co)
 
-  intercept_val <- if (!is.null(object$intercept)) cv[["(Intercept)"]] else NA_real_
+  # Shown when fitted, or when it absorbs the centering of a fit without
+  # intercept (original scale); absent for Cox.
+  has_row <- "(Intercept)" %in% names(cv)
+  intercept_val <- if (has_row && (!is.null(object$intercept) ||
+                                   cv[["(Intercept)"]] != 0))
+    cv[["(Intercept)"]] else NA_real_
   feat <- cv[names(cv) != "(Intercept)"]
   nz   <- feat[feat != 0]
   nz   <- nz[order(abs(nz), decreasing = TRUE)]
@@ -247,6 +266,8 @@ pdb_summary <- function(model, digits = 4L) {
   if (!is.na(pdb$n_simu))
     cat("  n_simu       : ", format(pdb$n_simu, big.mark = ","),
         "\n", sep = "")
+  if (!is.null(pdb$seed))
+    cat("  seed         : ", pdb$seed, "\n", sep = "")
   cat("  lambda_hat   : ", format(pdb$value, digits = digits),
       "\n", sep = "")
   

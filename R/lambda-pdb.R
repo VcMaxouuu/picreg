@@ -29,7 +29,9 @@
 #'     response vector is sampled under the null model
 #'     (\eqn{\beta = 0}) of the chosen family; the family-specific
 #'     gradient of the loss at \eqn{\beta = 0} is evaluated on the
-#'     fixed design \eqn{X}, and its supremum norm is recorded. The
+#'     fixed design \eqn{X}, and its supremum norm is recorded. For Gumbel,
+#'     both null location and scale are estimated jointly by maximum
+#'     likelihood for every draw. The
 #'     empirical \eqn{(1 - \alpha)} quantile of the `n_simu` recorded
 #'     norms is returned. Most accurate but slowest of the three.
 #'   }
@@ -50,8 +52,9 @@
 #'     \deqn{\hat\lambda_\alpha^{\rm analytical} =
 #'           \Phi^{-1}\!\left(1 - \alpha / (2p)\right)\, \sqrt{c(n) / n}.}
 #'     Deterministic and \eqn{O(1)} — no simulation. Conservative
-#'     (slightly over-estimates the true quantile) and gets looser as
-#'     \eqn{p} grows, but useful when speed matters or when Monte
+#'     (over-estimates the true quantile): nearly exact when the columns
+#'     of \eqn{X} are weakly correlated, increasingly conservative under
+#'     strong correlation. Useful when speed matters or when Monte
 #'     Carlo is overkill.
 #'   }
 #' }
@@ -66,11 +69,12 @@
 #'
 #' ## Computational cost
 #'
-#' Both Monte Carlo methods are dominated by a single \eqn{p \times n_{\rm simu}}
+#' Both Monte Carlo methods are dominated by the \eqn{p \times n_{\rm simu}}
 #' matrix product \eqn{X^\top R}, where \eqn{R} stacks the simulated
-#' residuals. This product is dispatched to BLAS as a single \eqn{\tt gemm},
-#' which is essentially as fast as a Monte Carlo selector can be on dense
-#' designs. For very large \eqn{n} or \eqn{p}, however, the constant
+#' residuals. This product is dispatched to BLAS as \eqn{\tt gemm} calls
+#' over blocks of draws, which bounds the memory footprint without changing
+#' the result, and is essentially as fast as a Monte Carlo selector can be
+#' on dense designs. For very large \eqn{n} or \eqn{p}, however, the constant
 #' becomes large and `"mc_exact"` may be unnecessarily expensive:
 #'
 #' \itemize{
@@ -79,8 +83,8 @@
 #'     as `"mc_exact"` at a fraction of the cost (no family-specific
 #'     residual generation, fewer dependencies on \eqn{y}-draws).
 #'   \item `"analytical"` is \eqn{O(1)} and useful as a quick upper
-#'     bound — slightly conservative, but accurate enough for triage
-#'     and for very high \eqn{p} where the Bonferroni tail is tight.
+#'     bound — conservative, but accurate enough for triage and for
+#'     weakly correlated designs, where the union bound is nearly tight.
 #' }
 #'
 #' Practical rule of thumb: prefer `"mc_exact"` for small to moderate
@@ -94,8 +98,8 @@
 #' \eqn{H_0\!\colon \beta = 0}. By construction of the quantile,
 #' \deqn{\Pr\!\left(\left\|\nabla \ell_0\right\|_\infty
 #'   > \hat\lambda^{\rm PDB}_\alpha \,\big|\, H_0\right) = \alpha,}
-#' so under the null model no variable enters the active set with
-#' probability at most \eqn{\alpha}. With the default
+#' so under the null model at least one variable enters the active set
+#' with probability at most \eqn{\alpha}. With the default
 #' \eqn{\alpha = 0.05}, this caps the false-discovery rate at \eqn{5\%}
 #' under the null: when the data carry no signal, picreg returns the
 #' empty support \eqn{95\%} of the time.
@@ -106,16 +110,23 @@
 #' @param family A PIC family specification. Can be either a family object
 #'   or a character string accepted by [get_family()].
 #' @param n_simu Number of Monte Carlo simulations used by the stochastic
-#'   methods. Ignored when `method = "analytical"`.
+#'   methods. Ignored when `method = "analytical"`. Default 2000.
 #' @param alpha Nominal tail probability used to define the quantile level.
-#' @param method One of "mc_exact", "mc_gaussian", or "analytical".
+#' @param method One of `"mc_exact"`, `"mc_gaussian"`, or `"analytical"`.
+#' @param seed Optional seed for the Monte Carlo draws, for a reproducible
+#'   \eqn{\hat\lambda}. The caller's random stream is restored afterwards.
+#'   Default `NULL` (no seeding).
 #' @return An object of class `"pic.lambda_pdb"`.
 #' \item{value}{Selected regularization parameter \eqn{\hat\lambda^{\rm PDB}_\alpha}.}
 #' \item{statistics}{Simulated null statistics used to estimate the quantile. 
 #' `NULL` for the analytical method.}
 #' \item{method}{Estimation method used.}
 #' \item{alpha}{Quantile level parameter.}
-#' \item{n_simu}{Number of Monte Carlo simulations.}
+#' \item{n_simu}{Number of Monte Carlo simulations (`NA` for the
+#' analytical method).}
+#' \item{seed}{The seed used, or `NULL`.}
+#' \item{family}{Name of the family.}
+#' \item{n, p}{Dimensions of `X`.}
 #'
 #' @examples
 #' X <- scale(matrix(rnorm(100 * 20), 100, 20))
@@ -128,15 +139,25 @@
 #'
 #' @export
 lambda_pdb <- function(X, family,
-                       n_simu = 5000L, alpha = 0.05,
-                       method = c("mc_exact", "mc_gaussian", "analytical")) {
+                       n_simu = 2000L, alpha = 0.05,
+                       method = c("mc_exact", "mc_gaussian", "analytical"),
+                       seed = NULL) {
   method <- match.arg(method)
   family <- get_family(family)
-  if (!is.matrix(X)) stop("`X` must be a numeric matrix.")
+  if (!is.matrix(X) || !is.numeric(X))
+    stop("`X` must be a numeric matrix.", call. = FALSE)
+  if (any(!is.finite(X)))
+    stop("`X` contains NA, NaN, or Inf values.", call. = FALSE)
+  n_simu <- .check_positive_int(n_simu, "n_simu")
+  alpha  <- .check_alpha(alpha, "alpha")
+  seed   <- .check_seed(seed, "seed")
 
   mu <- colMeans(X)
   sd <- sqrt(colMeans(sweep(X, 2L, mu, "-") ^ 2))
-  if (max(abs(mu)) >= 1e-4 || max(abs(sd - 1.0)) >= 1e-4) {
+  # Constant columns are centered to zero by `pic()` and cannot be scaled;
+  # they are left out of the unit-variance check.
+  varying <- sd > 1e-8
+  if (any(abs(mu) >= 1e-4) || any(abs(sd[varying] - 1.0) >= 1e-4)) {
     warning("lambda_pdb: design matrix X does not appear standardized; ",
             "results may be unreliable.")
   }
@@ -151,19 +172,25 @@ lambda_pdb <- function(X, family,
 
   # Cox uses a custom permutation-based pivotal estimator for mc_exact.
   # mc_gaussian and analytical fall back to the family-agnostic paths.
-  if (family$name == "cox" && method == "mc_exact") {
-    out <- cox_null_grad_norms_cpp(X, as.integer(n_simu), alpha)
-  } else {
-    out <- switch(
-      method,
-      mc_exact    = pdb_mc_exact_cpp(X, family$name, as.integer(n_simu), alpha),
-      mc_gaussian = pdb_mc_gaussian_cpp(X, c_n, as.integer(n_simu), alpha),
-      analytical  = .pdb_analytical(X, c_n, alpha)
-    )
-  }
+  out <- .with_seed(seed, {
+    if (family$name == "cox" && method == "mc_exact") {
+      cox_null_grad_norms_cpp(X, n_simu, alpha)
+    } else {
+      switch(
+        method,
+        mc_exact    = pdb_mc_exact_cpp(X, family$name, n_simu, alpha),
+        mc_gaussian = pdb_mc_gaussian_cpp(X, c_n, n_simu, alpha),
+        analytical  = .pdb_analytical(X, c_n, alpha)
+      )
+    }
+  })
   out$method <- method
   out$alpha  <- alpha
-  out$n_simu <- if (method == "analytical") NA_integer_ else as.integer(n_simu)
+  out$n_simu <- if (method == "analytical") NA_integer_ else n_simu
+  out$seed   <- seed
+  out$family <- family$name
+  out$n      <- nrow(X)
+  out$p      <- ncol(X)
   class(out) <- "pic.lambda_pdb"
   out
 }

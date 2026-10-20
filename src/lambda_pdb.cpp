@@ -5,12 +5,28 @@
 //   * pdb_mc_exact_cpp    : Monte Carlo under the family's null distribution
 //                           — consumes the C++ family system in family_base.h
 //
-// Custom-pivot families (Gumbel, Cox) stay in R via `family$null_grad_norms`.
+// Cox uses its dedicated permutation pivot; Gumbel is handled here at its
+// joint null location/scale MLE.
+//
+// Both selectors process the n_simu draws in blocks of columns. Draws are
+// generated in column-major order, i.e. in the same RNG order as a single
+// n x n_simu matrix, so the statistics do not depend on the block size; only
+// the peak memory does.
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include "family_base.h"
 
+#include <algorithm>
+
 using namespace arma;
+
+// Number of draws per block: keeps each n x block matrix around 32 MB.
+static int mc_block_size(int n, int n_simu)
+{
+    const double max_doubles = 4e6;
+    const int block = (int)(max_doubles / std::max(n, 1));
+    return std::max(1, std::min(n_simu, block));
+}
 
 // ---------------------------------------------------------------------------
 // `mc_gaussian` Monte Carlo.
@@ -24,11 +40,16 @@ Rcpp::List pdb_mc_gaussian_cpp(const arma::mat &X, double c_n,
                                int n_simu, double alpha)
 {
     const int n = (int)X.n_rows;
+    const int block = mc_block_size(n, n_simu);
 
-    mat W = arma::randn<arma::mat>(n, n_simu);
-
-    mat XtW = X.t() * W; // (p x n_simu)
-    vec stats_ = arma::max(arma::abs(XtW), 0).t();
+    vec stats_(n_simu);
+    for (int start = 0; start < n_simu; start += block)
+    {
+        const int b = std::min(block, n_simu - start);
+        mat W = arma::randn<arma::mat>(n, b);
+        mat XtW = X.t() * W; // (p x b)
+        stats_.subvec(start, start + b - 1) = arma::max(arma::abs(XtW), 0).t();
+    }
 
     stats_ *= std::sqrt(c_n) / (double)n;
     double q = arma::as_scalar(arma::quantile(stats_, arma::vec{1.0 - alpha}));
@@ -39,7 +60,7 @@ Rcpp::List pdb_mc_gaussian_cpp(const arma::mat &X, double c_n,
 }
 
 // ---------------------------------------------------------------------------
-// `mc_exact` Monte Carlo for the four standard families.
+// `mc_exact` Monte Carlo for the five non-Cox families.
 // ---------------------------------------------------------------------------
 // [[Rcpp::export]]
 Rcpp::List pdb_mc_exact_cpp(const arma::mat &X, std::string family_name,
@@ -48,19 +69,37 @@ Rcpp::List pdb_mc_exact_cpp(const arma::mat &X, std::string family_name,
     picr::Family fam = picr::get_family(family_name);
 
     const int n = (int)X.n_rows;
-    mat y_null = fam.generate_y(n, n_simu);
+    const int block = mc_block_size(n, n_simu);
+    const bool is_gumbel = (family_name == "gumbel");
 
-    mat residual_mat(n, n_simu);
-    for (int j = 0; j < n_simu; ++j)
+    vec stats_(n_simu);
+    for (int start = 0; start < n_simu; start += block)
     {
-        vec yj = y_null.col(j);
-        double b0 = fam.starting_intercept(yj);
-        vec lp_j(n, fill::value(b0));
-        residual_mat.col(j) = fam.residual(yj, lp_j);
-    }
+        const int b = std::min(block, n_simu - start);
+        mat y_null = fam.generate_y(n, b);
 
-    mat grad_mat = X.t() * residual_mat; // (p x n_simu)
-    vec stats_ = arma::max(arma::abs(grad_mat), 0).t();
+        mat residual_mat(n, b);
+        for (int j = 0; j < b; ++j)
+        {
+            if (is_gumbel)
+            {
+                // The exact null statistic is evaluated at the joint
+                // location/scale MLE. null_fit() also reuses that solve to
+                // form the residual.
+                residual_mat.col(j) = picr::gumbel::null_fit(y_null.col(j)).residual;
+            }
+            else
+            {
+                vec yj = y_null.col(j);
+                double b0 = fam.starting_intercept(yj);
+                vec lp_j(n, fill::value(b0));
+                residual_mat.col(j) = fam.residual(yj, lp_j);
+            }
+        }
+
+        mat grad_mat = X.t() * residual_mat; // (p x b)
+        stats_.subvec(start, start + b - 1) = arma::max(arma::abs(grad_mat), 0).t();
+    }
 
     double q = arma::as_scalar(arma::quantile(stats_, arma::vec{1.0 - alpha}));
 

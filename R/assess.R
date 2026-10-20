@@ -11,8 +11,8 @@
 #'   \item{`"poisson"`}{MSE, MAE, Poisson deviance.}
 #'   \item{`"exponential"`}{MSE, MAE, Exponential deviance.}
 #'   \item{`"gumbel"`}{MSE, MAE, deviance computed from the per-sample
-#'         negative log-likelihood with a moment estimate of the scale
-#'         parameter \eqn{\hat\sigma = \mathrm{sd}(y - \hat\eta)\sqrt{6}/\pi}.}
+#'         negative log-likelihood with the scale parameter profiled at its
+#'         maximum-likelihood estimate.}
 #'   \item{`"cox"`}{Harrell's C-index and the Breslow partial
 #'         log-likelihood (negative, normalized by `n`).}
 #' }
@@ -28,8 +28,10 @@
 #' @param newx Numeric design matrix at which predictions are
 #'   evaluated, with the same columns as the training data.
 #' @param newy Response on the new observations. Numeric vector for
-#'   all families except Cox; for Cox, a two-column matrix
-#'   `(time, event)` matching the training response format.
+#'   all families except Cox (logical or factor values are accepted for
+#'   binomial fits and mapped to `0`/`1` as at training); for Cox, a
+#'   two-column matrix `(time, event)` matching the training response
+#'   format.
 #' @param true_features Optional integer or character vector listing
 #'   the indices (or names) of the true active variables. When
 #'   supplied, support-recovery metrics are appended.
@@ -58,6 +60,8 @@ assess.pic <- function(object, newx, newy, true_features = NULL, ...) {
       stop("For Cox fits, `newy` must be a 2-column matrix (time, event).")
     metrics <- .assess_cox(object, newx, newy)
   } else {
+    if (family == "binomial")
+      newy <- .as_binary01(newy, attr(object, "preproc")$y_levels)
     newy <- as.numeric(newy)
     eta  <- predict(object, newx = newx, type = "link")
     mu   <- object$family$g$fn(eta)
@@ -136,13 +140,11 @@ print.pic.assess <- function(x, ...) {
 
 .assess_gumbel <- function(y, eta) {
   resid <- y - eta
-  # Moment estimator: Var(Gumbel(0, sigma)) = (pi^2 / 6) sigma^2.
-  sigma_hat <- max(stats::sd(resid) * sqrt(6) / pi, 1e-15)
-  z <- resid / sigma_hat
-  nll <- log(sigma_hat) + z + exp(-z)
+  offset <- y[1L]
+  profile <- gumbel_profile_cpp(y - offset, eta - offset)
   data.frame(
     metric = c("MSE", "MAE", "deviance"),
-    value  = c(mean(resid^2), mean(abs(resid)), 2 * mean(nll))
+    value  = c(mean(resid^2), mean(abs(resid)), 2 * profile$raw_loss)
   )
 }
 

@@ -17,6 +17,7 @@ check_y(y, n_samples = NULL, y_kind = "continuous")
 Validated \code{y} (possibly coerced to matrix for survival).
 }
 \description{
-Validate response according to its distributional kind.
+A binary response may also be logical (\code{FALSE}/\code{TRUE} mapped to \code{0}/\code{1})
+or a two-level factor (first level mapped to \code{0}, second to \code{1}).
 }
 \keyword{internal}

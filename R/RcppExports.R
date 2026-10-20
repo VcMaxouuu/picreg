@@ -5,11 +5,19 @@ cox_null_grad_norms_cpp <- function(X, n_simu, alpha) {
     .Call(`_picreg_cox_null_grad_norms_cpp`, X, n_simu, alpha)
 }
 
+gumbel_profile_cpp <- function(y, lp) {
+    .Call(`_picreg_gumbel_profile_cpp`, y, lp)
+}
+
+gumbel_null_fit_cpp <- function(y) {
+    .Call(`_picreg_gumbel_null_fit_cpp`, y)
+}
+
 fista_cpp <- function(X, y, family_name, penalty_name, lambda_reg, scad_a = 3.7, mcp_gamma = 3.0, fit_intercept = TRUE, rel_tol = 1e-4, step_size_init = 1e-1, max_iter = 500L, eta_param = 0.8, delta_param = 1e-4, rho = 0.5, bb_growth_cap = 4.0, coef_init = NULL, intercept_init = NULL) {
     .Call(`_picreg_fista_cpp`, X, y, family_name, penalty_name, lambda_reg, scad_a, mcp_gamma, fit_intercept, rel_tol, step_size_init, max_iter, eta_param, delta_param, rho, bb_growth_cap, coef_init, intercept_init)
 }
 
-fista_cox_cpp <- function(X, times, events, penalty_name, lambda_reg, scad_a = 3.7, mcp_gamma = 3.0, rel_tol = 1e-4, step_size_init = 1e-2, max_iter = 500L, eta_param = 0.8, delta_param = 1e-4, rho = 0.5, bb_growth_cap = 2.0, coef_init = NULL) {
+fista_cox_cpp <- function(X, times, events, penalty_name, lambda_reg, scad_a = 3.7, mcp_gamma = 3.0, rel_tol = 1e-4, step_size_init = 1e-1, max_iter = 500L, eta_param = 0.8, delta_param = 1e-4, rho = 0.5, bb_growth_cap = 4.0, coef_init = NULL) {
     .Call(`_picreg_fista_cox_cpp`, X, times, events, penalty_name, lambda_reg, scad_a, mcp_gamma, rel_tol, step_size_init, max_iter, eta_param, delta_param, rho, bb_growth_cap, coef_init)
 }
 
@@ -27,5 +35,9 @@ pdb_mc_gaussian_cpp <- function(X, c_n, n_simu, alpha) {
 
 pdb_mc_exact_cpp <- function(X, family_name, n_simu, alpha) {
     .Call(`_picreg_pdb_mc_exact_cpp`, X, family_name, n_simu, alpha)
+}
+
+concordance_index_cpp <- function(times, events, predictions) {
+    .Call(`_picreg_concordance_index_cpp`, times, events, predictions)
 }
 

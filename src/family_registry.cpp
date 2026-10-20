@@ -21,27 +21,32 @@ Family get_family(const std::string& name) {
   if (name == "gaussian") {
     return Family{ "gaussian",
                    &gaussian::evaluate, &gaussian::residual, &gaussian::grad,
+                   nullptr,
                    &gaussian::starting_intercept, &gaussian::generate_y };
   }
   if (name == "binomial") {
     return Family{ "binomial",
                    &binomial::evaluate, &binomial::residual, &binomial::grad,
+                   nullptr,
                    &binomial::starting_intercept, &binomial::generate_y };
   }
   if (name == "poisson") {
     return Family{ "poisson",
                    &poisson::evaluate, &poisson::residual, &poisson::grad,
+                   nullptr,
                    &poisson::starting_intercept, &poisson::generate_y };
   }
   if (name == "exponential") {
     return Family{ "exponential",
                    &exponential::evaluate, &exponential::residual,
                    &exponential::grad,
+                   nullptr,
                    &exponential::starting_intercept, &exponential::generate_y };
   }
   if (name == "gumbel") {
     return Family{ "gumbel",
                    &gumbel::evaluate, &gumbel::residual, &gumbel::grad,
+                   &gumbel::value_grad,
                    &gumbel::starting_intercept, &gumbel::generate_y };
   }
   Rcpp::stop("Unknown family in C++ registry: " + name);

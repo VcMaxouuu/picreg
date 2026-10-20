@@ -1,16 +1,30 @@
 // Non-monotone Accelerated Proximal Gradient (nmAPG) solver — C++.
 //
-// Faithful port of R/fista.R (Li & Lin, NeurIPS 2015 Algorithm 4).
-// Consumes the picr Family and Penalty systems for everything beyond
-// pure FISTA mechanics.
+// Li & Lin (NeurIPS 2015), Algorithm 4: a FISTA-type accelerated proximal
+// gradient with Barzilai-Borwein steps and a non-monotone line search.
+// R/fista.R is only the dispatcher. Consumes the picr Family and Penalty
+// systems for everything beyond pure FISTA mechanics.
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include "family_base.h"
 #include "penalty_base.h"
 
+#include <utility>
+
 using namespace arma;
 
 // ---------- helpers --------------------------------------------------------
+
+// Evaluate the smooth objective and its gradient together when the family
+// exposes a shared-computation path (notably Gumbel's profiled scale MLE).
+static picr::ValueGradResult value_grad(const mat& X, const vec& y,
+                                        const picr::Family& fam,
+                                        const vec& lp) {
+  if (fam.value_grad != nullptr) {
+    return fam.value_grad(X, y, lp);
+  }
+  return {fam.evaluate(y, lp), fam.grad(X, y, lp)};
+}
 
 // Joint Barzilai–Borwein step over (coef, intercept). Clipped to
 // [alpha_min, min(alpha_max, growth_cap * fallback, alpha_pen_cap)] so the
@@ -120,8 +134,9 @@ static VResult v_branch(const mat& X, const vec& y,
                         double bb_growth_cap, double alpha_pen_cap,
                         int max_inner = 30) {
   vec lp_x = X * x_coef + x_int;
-  double f_x = fam.evaluate(y, lp_x);
-  picr::GradResult gx = fam.grad(X, y, lp_x);
+  picr::ValueGradResult vg_x = value_grad(X, y, fam, lp_x);
+  double f_x = vg_x.value;
+  picr::GradResult gx = std::move(vg_x.grad);
   
   alpha_x = bb_step(x_coef, y_prev_coef, x_int, y_prev_int,
                     gx.coef, grad_y_prev_coef, gx.intercept, grad_y_prev_int,
@@ -219,18 +234,23 @@ Rcpp::List fista_cpp(const arma::mat& X,
   double y_prev_int  = x_int;
   
   vec lp = X * x_coef + x_int;
-  picr::GradResult g0 = fam.grad(X, y, lp);
+  picr::ValueGradResult vg0 = value_grad(X, y, fam, lp);
+  picr::GradResult g0 = std::move(vg0.grad);
   vec    grad_y_prev_coef = g0.coef;
   double grad_y_prev_int  = g0.intercept;
   
   double t_prev = 0.0, t_curr = 1.0;
-  double F_x = fam.evaluate(y, lp) + pen.evaluate(x_coef, lambda_reg, pen.param);
+  double F_x = vg0.value + pen.evaluate(x_coef, lambda_reg, pen.param);
   double c_k = F_x, q_k = 1.0;
   
   double alpha_y = step_size_init;
   double alpha_x = step_size_init;
+
+  int  n_iter    = 0;
+  bool converged = false;
   
   for (int k = 1; k <= max_iter; ++k) {
+    n_iter = k;
     double a = t_prev / t_curr;
     double b = (t_prev - 1.0) / t_curr;
     
@@ -240,8 +260,9 @@ Rcpp::List fista_cpp(const arma::mat& X,
       : 0.0;
     
     vec lp_y = X * y_coef + y_int;
-    double f_y = fam.evaluate(y, lp_y);
-    picr::GradResult gy = fam.grad(X, y, lp_y);
+    picr::ValueGradResult vg_y = value_grad(X, y, fam, lp_y);
+    double f_y = vg_y.value;
+    picr::GradResult gy = std::move(vg_y.grad);
     
     alpha_y = bb_step(y_coef, y_prev_coef, y_int, y_prev_int,
                       gy.coef, grad_y_prev_coef, gy.intercept, grad_y_prev_int,
@@ -296,6 +317,7 @@ Rcpp::List fista_cpp(const arma::mat& X,
     if (rel_gm < rel_tol) {
       x_coef = x_next_coef;
       x_int  = x_next_int;
+      converged = true;
       break;
     }
     
@@ -323,6 +345,8 @@ Rcpp::List fista_cpp(const arma::mat& X,
   return Rcpp::List::create(
     Rcpp::Named("coef")      = x_coef,
     Rcpp::Named("intercept") = fit_intercept ? Rcpp::wrap(x_int)
-      : R_NilValue
+      : R_NilValue,
+    Rcpp::Named("n_iter")    = n_iter,
+    Rcpp::Named("converged") = converged
   );
 }

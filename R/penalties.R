@@ -9,8 +9,8 @@
 #'   \item{`"lasso"`}{
 #'     L1 (soft-thresholding) penalty:
 #'     \deqn{p_\lambda(|t|) = \lambda |t|.}
-#'     Convex, gives the strongest shrinkage on large coefficients 
-#'     bias does not vanish as \eqn{|t| \to \infty}.
+#'     Convex. Of the three penalties it shrinks large coefficients the
+#'     most: its bias does not vanish as \eqn{|t| \to \infty}.
 #'   }
 #'   \item{`"scad"` (Smoothly Clipped Absolute Deviation, Fan & Li 2001)}{
 #'     Non-convex penalty with concavity parameter `scad_a > 2`
@@ -49,12 +49,16 @@ NULL
 }
 
 .scad <- function(a = 3.7) {
+  if (!is.numeric(a) || length(a) != 1L || !is.finite(a))
+    stop("`scad_a` must be a single number.", call. = FALSE)
   if (a <= 2) stop("SCAD requires a > 2; got a = ", a, call. = FALSE)
   structure(list(name = "scad", params = list(a = a)),
             class = c("pic.penalty.scad", "pic.penalty"))
 }
 
 .mcp <- function(gamma = 3.0) {
+  if (!is.numeric(gamma) || length(gamma) != 1L || !is.finite(gamma))
+    stop("`mcp_gamma` must be a single number.", call. = FALSE)
   if (gamma <= 1) stop("MCP requires gamma > 1; got gamma = ", gamma,
                        call. = FALSE)
   structure(list(name = "mcp", params = list(gamma = gamma)),

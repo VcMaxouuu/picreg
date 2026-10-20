@@ -12,12 +12,12 @@ pic(
   standardize = TRUE,
   intercept = TRUE,
   lambda_method = c("mc_exact", "mc_gaussian", "analytical"),
-  relax = FALSE,
   mcp_gamma = 3,
   scad_a = 3.7,
   lambda = NULL,
   lambda_alpha = 0.05,
   lambda_n_simu = 2000,
+  lambda_seed = NULL,
   tol = 1e-05,
   path_length = 10L,
   maxit = 1000
@@ -31,7 +31,8 @@ two columns and no \code{NA}, \code{NaN}, or infinite values.}
 
 \item{y}{Response variable with length \code{n}. For Gaussian and Gumbel models,
 \code{y} must be numeric. For Binomial models, \code{y} must contain only \code{0} and
-\code{1}. For Poisson and Exponential models, \code{y} must be non-negative. For
+\code{1}, or be logical (\code{TRUE} = 1) or a two-level factor (second level
+= 1). For Poisson and Exponential models, \code{y} must be non-negative. For
 \code{family = "cox"}, \code{y} must be a two-column numeric matrix \verb{(time, event)},
 where \code{time} is non-negative and \code{event} is coded as \code{0} or \code{1}.}
 
@@ -56,24 +57,25 @@ intercept, so combining \code{standardize = TRUE} with \code{intercept = FALSE}
 assumes the data are already centered (see \code{intercept}).}
 
 \item{intercept}{Whether to fit an unpenalized intercept. Forced to
-\code{FALSE} for the Cox family. We assume the data has been centered if intercept = FALSE.}
+\code{FALSE} for the Cox family. When \code{intercept = FALSE}, the data are
+assumed to be centered.}
 
 \item{lambda_method}{One of \code{"mc_exact"}, \code{"mc_gaussian"}, \code{"analytical"}. See
 \code{\link[=lambda_pdb]{lambda_pdb()}} for details. The default \code{"mc_exact"} is a safe choice
 for small to moderate designs; for very large \eqn{n} or \eqn{p},
 \code{"mc_gaussian"} matches \code{"mc_exact"} closely at a fraction of the
-cost (it amortises only one BLAS \eqn{\tt gemm}, no family-specific
-residual draws), and \code{"analytical"} is closed-form.}
-
-\item{relax}{If \code{TRUE}, run an unpenalized refit on the selected support
-after the regularization path (debiasing).}
+cost (it skips the family-specific null draws and residual
+evaluations), and \code{"analytical"} is closed-form.}
 
 \item{mcp_gamma}{MCP concavity parameter when \code{penalty = "mcp"}. Default 3.0.}
 
 \item{scad_a}{SCAD concavity parameter when \code{penalty = "scad"}. Default 3.7.}
 
-\item{lambda}{Optional user-supplied regularization parameter. When \code{NULL},
-\code{\link[=lambda_pdb]{lambda_pdb()}} is used to select it automatically. Providing \code{lambda}
+\item{lambda}{Optional regularization parameter. When \code{NULL},
+\code{\link[=lambda_pdb]{lambda_pdb()}} is used to select it automatically. Either a single
+non-negative number, or a \code{"pic.lambda_pdb"} object (typically
+\code{fit$lambda_pdb} from a previous fit on the same \code{X} and family), whose
+calibration is then reused and kept on the new fit. Providing \code{lambda}
 avoids recomputing the PDB calibration, which is useful for example when
 fitting several penalties (\code{"lasso"}, \code{"scad"}, \code{"mcp"}) on the same
 dataset, since the PDB choice of \eqn{\lambda} does not depend on the
@@ -83,26 +85,39 @@ penalty itself.}
 
 \item{lambda_n_simu}{Number of Monte Carlo draws for PDB. See \code{\link[=lambda_pdb]{lambda_pdb()}}.}
 
+\item{lambda_seed}{Optional seed for the Monte Carlo PDB calibration, for
+a reproducible \eqn{\lambda}. Only the calibration is seeded; the
+global random stream is left unchanged. Default \code{NULL} (no seeding).}
+
 \item{tol}{FISTA convergence tolerance at the final path step.}
 
 \item{path_length}{Number of points in the warm-start regularization
 path running from \eqn{\lambda_{\max}} down to \eqn{\lambda^{\rm PDB}}.
 Default 10.}
 
-\item{maxit}{Maximum number of iterations for FISTA if convergence is not yet reached.}
+\item{maxit}{Maximum number of FISTA iterations per path step. A warning
+is issued if the final step does not converge within \code{maxit}.}
 }
 \value{
 An object of class \code{c("pic.<family>", "pic")}.
-\item{beta}{Fitted coefficients (length \code{p}).}
+\item{call}{The matched call.}
+\item{beta}{Fitted coefficients (length \code{p}), on the standardized
+scale when \code{standardize = TRUE}. Use \code{\link[=coef.pic]{coef.pic()}} for the
+original scale of \code{X}.}
 \item{intercept}{Fitted intercept or \code{NULL}.}
 \item{df}{The number of nonzero coefficients.}
-\item{selected}{Indices of the nonzero coefficients.}
+\item{selected}{Names of the selected variables when \code{X} has column
+names, otherwise their integer column indices.}
 \item{lambda}{\eqn{\lambda} used during training (PDB or user-supplied).}
 \item{family}{The family object used.}
 \item{penalty}{The penalty object used.}
-\item{lambda_pdb}{Result from \code{\link[=lambda_pdb]{lambda_pdb()}} if \eqn{\lambda} is not user-supplied.}
+\item{lambda_pdb}{The \code{\link[=lambda_pdb]{lambda_pdb()}} calibration, or \code{NULL} when a
+numeric \eqn{\lambda} is supplied.}
 \item{n_samples}{The number of observations in the training set.}
 \item{n_features}{The number of variables in the training set.}
+\item{n_iter}{Total number of FISTA iterations over the path.}
+\item{converged}{Whether the final FISTA step reached \code{tol} within
+\code{maxit} iterations.}
 For \code{family = "cox"}, the fit additionally carries:
 \item{baseline_cumulative_hazard}{Estimated Breslow baseline cumulative hazard function.}
 \item{baseline_survival}{Estimated baseline survival function.}
@@ -117,7 +132,7 @@ Supported families are Gaussian, binomial, Poisson, exponential, Gumbel,
 and Cox proportional hazards.
 }
 \details{
-Minimises the objective function
+Minimizes the objective function
 \deqn{\hat\beta = \arg\min_\beta\; L(\beta)
        \;+\; \lambda_\alpha^{\rm PDB}\,\mathrm{pen}(\beta)
        \quad\text{with}\quad
@@ -133,8 +148,12 @@ non-zero coefficients. Here, \eqn{\phi} and \eqn{g} are
 family-specific transformations chosen so that the gradient at the
 null has a distribution free of the nuisance parameter, which is
 precisely what makes the use of \eqn{\lambda^{\rm PDB}_\alpha}
-valid. Optimization is performed using a warm-started FISTA
-regularization path.
+valid. Optimization follows Section 3.3 of the paper: a warm-started
+FISTA path with the \eqn{\ell_1} penalty runs from \eqn{\lambda_{\max}}
+(the smallest \eqn{\lambda} for which \eqn{\beta = 0} is a solution)
+down to \eqn{\lambda}; for SCAD and MCP, a final stage then minimizes
+the criterion with the target penalty, initialized at the
+\eqn{\ell_1} solution.
 \subsection{Details on family-specific losses}{
 
 \describe{
@@ -175,7 +194,7 @@ transformation). With \eqn{\phi(\cdot) = \mathrm{Id}} and
 }
 \item{\code{"gumbel"}}{
 A location-scale model with extreme-value noise. The base
-log-likelihood is
+negative log-likelihood is
 \deqn{\ell_n(\theta, \sigma) = \log(\sigma)
       + \frac{1}{n}\sum_{i=1}^n \left(z_i + e^{-z_i}\right),
       \qquad z_i = \frac{y_i - \theta_i}{\sigma}.}

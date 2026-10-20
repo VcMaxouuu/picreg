@@ -17,6 +17,10 @@
 #'   \item{`tpr`}{\eqn{\left|\hat{S}\cap S\right| / |S|} - true positive rate. For `s = 0`, this is set to 1 when no true feature exists.}
 #'   \item{`fdr`}{\eqn{\left|\hat{S}\setminus S\right| / \max{(|\hat{S}|, 1)}} - false discovery rate.}
 #' }
+#'
+#' Fits that fail are not counted as failed recoveries: they are excluded
+#' from the averages, counted in the `n_failed` column of `results`, and
+#' reported in a single warning.
 #' 
 #' ## Details on data sampling
 #'
@@ -68,19 +72,26 @@
 #'   the response. The sign is fixed to `+`.
 #' @param lambda_method Passed to `pic()`. Default `"mc_exact"`.
 #' @param lambda_alpha Nominal level for the PDB selector.
-#' @param lambda_n_simu Monte Carlo size for the PDB selector.
+#' @param lambda_n_simu Monte Carlo size for the PDB selector. Default 2000.
 #' @param verbose Logical; if `TRUE`, prints a one-line progress message per `(n, p, penalty, s)`.
 #' @param parallel Logical; if `TRUE`, distribute the `m` Monte Carlo
 #'   replications of each `(n, p, penalty, s)` cell across multiple R
-#'   processes via the `future` framework (`future::multisession` plan).
+#'   processes via the `future` framework (a `future::multisession` plan,
+#'   the caller's plan being restored on exit). Requires the \pkg{future}
+#'   and \pkg{future.apply} packages.
 #' @param workers Integer; number of background R processes to use when
-#'   `parallel = TRUE`. Ignored otherwise.
+#'   `parallel = TRUE`. Default `NULL` uses all available cores but one
+#'   (`future::availableCores(omit = 1)`, which honors the limits set by
+#'   CRAN or a scheduler). Ignored otherwise.
 #'
 #' @return An object of class `c("pic.phase_transition", "pic.diagnostic")`.
+#' \item{results}{Long-format `data.frame` with one row per
+#'       `(n, p, penalty, s)` and columns `n`, `p`, `penalty`, `s`,
+#'       `exact_recovery`, `tpr`, `fdr`, `n_failed`.}
+#' \item{exact_recovery, tpr, fdr}{Wide-format `data.frame`s with one row
+#'       per `(n, p, penalty)` curve (columns `n`, `p`, `penalty`) and one
+#'       column `s_<k>` per sparsity level.}
 #' \item{s_grid}{`0:s_max`.}
-#' \item{exact_recovery, tpr, fdr}{Matrices of shape `(length(n) * length(penalty), s_max + 1)` -
-#'       one row per `(n, p, penalty)` curve, one column per sparsity level}
-#' \item{curve_n, curve_p, curve_penalty}{Curve descriptors aligned with the rows of the metric matrices.}
 #' \item{config}{A list of all configuration arguments for downstream plotting / reporting.}
 #' \item{call}{The call.}
 #'
@@ -90,8 +101,7 @@
 #' \donttest{
 #' pt <- phase_transition(n = 50, p = 100, type = "gaussian",
 #'                        s_max = 8, m = 20,
-#'                        penalty = c("lasso", "scad"), 
-#'                        parallel = TRUE)
+#'                        penalty = c("lasso", "scad"))
 #' plot(pt)
 #' }
 #' @export
@@ -105,10 +115,10 @@ phase_transition <- function(
     beta_value    = 3,
     lambda_method = "mc_exact",
     lambda_alpha  = 0.05,
-    lambda_n_simu = 5000L,
+    lambda_n_simu = 2000L,
     verbose       = FALSE,
     parallel      = FALSE,
-    workers       = parallel::detectCores() - 1L
+    workers       = NULL
 ) {
   type <- match.arg(type)
   penalty <- match.arg(
@@ -130,12 +140,24 @@ phase_transition <- function(
   K <- length(n)
   
   if (parallel) {
-    future::plan(future::multisession, workers = workers)
-    on.exit(future::plan(future::sequential), add = TRUE)
+    if (!requireNamespace("future", quietly = TRUE) ||
+        !requireNamespace("future.apply", quietly = TRUE))
+      stop("`parallel = TRUE` requires the 'future' and 'future.apply' ",
+           "packages.", call. = FALSE)
+    if (is.null(workers)) workers <- future::availableCores(omit = 1L)
+    old_plan <- future::plan(future::multisession, workers = workers)
+    on.exit(future::plan(old_plan), add = TRUE)
+    map_reps <- function(f) {
+      future.apply::future_lapply(seq_len(m), f, future.seed = TRUE,
+                                  future.packages = "picreg")
+    }
+  } else {
+    map_reps <- function(f) lapply(seq_len(m), f)
   }
   
   results <- vector("list", K * length(penalty) * length(s_grid))
   row_id <- 0L
+  first_error <- NULL
   
   for (k in seq_len(K)) {
     nk <- n[k]
@@ -144,43 +166,48 @@ phase_transition <- function(
     for (pen in penalty) {
       for (s in s_grid) {
         
-        rep_results <- future.apply::future_lapply(
-          seq_len(m),
-          future.packages = "picreg",
-          function(rep) {
-            sim <- .generate_recovery_data(nk, pk, s, type, beta_value)
-            
-            fit <- tryCatch(
-              pic(
-                sim$X,
-                sim$y,
-                family = type,
-                penalty = pen,
-                lambda_method = lambda_method,
-                lambda_alpha = lambda_alpha,
-                lambda_n_simu = lambda_n_simu
-              ),
-              error = function(e) NULL
-            )
-            
-            if (is.null(fit)) {
-              return(c(exact = 0, tpr = 0, fdr = 1))
-            }
-            
-            sel <- sort(fit$selected)
-            true <- sort(sim$true_features)
-            
-            c(
+        rep_results <- map_reps(function(rep) {
+          sim <- .generate_recovery_data(nk, pk, s, type, beta_value)
+          
+          fit <- tryCatch(
+            pic(
+              sim$X,
+              sim$y,
+              family = type,
+              penalty = pen,
+              lambda_method = lambda_method,
+              lambda_alpha = lambda_alpha,
+              lambda_n_simu = lambda_n_simu
+            ),
+            error = function(e) e
+          )
+          
+          # A failed fit is excluded from the averages rather than
+          # counted as a failed recovery.
+          if (inherits(fit, "error")) {
+            return(list(metrics = c(exact = NA_real_, tpr = NA_real_,
+                                    fdr = NA_real_),
+                        error = conditionMessage(fit)))
+          }
+          
+          sel <- sort(fit$selected)
+          true <- sort(sim$true_features)
+          
+          list(
+            metrics = c(
               exact = as.integer(identical(sel, true)),
               tpr = if (length(true) == 0L) 1 else length(intersect(sel, true)) / length(true),
               fdr = length(setdiff(sel, true)) / max(length(sel), 1L)
-
-            )
-          },
-          future.seed = TRUE
-        )
+            ),
+            error = NA_character_
+          )
+        })
         
-        rep_results <- do.call(rbind, rep_results)
+        metrics <- do.call(rbind, lapply(rep_results, `[[`, "metrics"))
+        errors <- vapply(rep_results, `[[`, character(1L), "error")
+        n_failed <- sum(!is.na(errors))
+        if (n_failed > 0L && is.null(first_error))
+          first_error <- errors[!is.na(errors)][1L]
         
         row_id <- row_id + 1L
         
@@ -189,9 +216,10 @@ phase_transition <- function(
           p = pk,
           penalty = pen,
           s = s,
-          exact_recovery = mean(rep_results[, "exact"]),
-          tpr = mean(rep_results[, "tpr"]),
-          fdr = mean(rep_results[, "fdr"]),
+          exact_recovery = mean(metrics[, "exact"], na.rm = TRUE),
+          tpr = mean(metrics[, "tpr"], na.rm = TRUE),
+          fdr = mean(metrics[, "fdr"], na.rm = TRUE),
+          n_failed = n_failed,
           stringsAsFactors = FALSE
         )
         
@@ -199,9 +227,9 @@ phase_transition <- function(
           message(sprintf(
             "(n=%d, p=%d, penalty=%s, s=%d) recovery=%.2f  tpr=%.2f  fdr=%.2f",
             nk, pk, pen, s,
-            mean(rep_results[, "exact"]),
-            mean(rep_results[, "tpr"]),
-            mean(rep_results[, "fdr"])
+            results[[row_id]]$exact_recovery,
+            results[[row_id]]$tpr,
+            results[[row_id]]$fdr
           ))
         }
       }
@@ -209,6 +237,14 @@ phase_transition <- function(
   }
   
   results <- do.call(rbind, results)
+  
+  total_failed <- sum(results$n_failed)
+  if (total_failed > 0L) {
+    warning(sprintf(paste0("%d of %d fits failed and were excluded from the ",
+                           "averages (see `results$n_failed`). First error: %s"),
+                    total_failed, m * nrow(results), first_error),
+            call. = FALSE)
+  }
   
   config <- list(
     n = n,
@@ -271,22 +307,26 @@ phase_transition <- function(
 #' @export
 print.pic.phase_transition <- function(x, ...) {
   cfg <- x$config
-  K <- length(x$curve_n)
-  
+  curves <- x$exact_recovery[c("n", "p", "penalty")]
+  K <- nrow(curves)
+
   cat("pic phase-transition analysis\n")
   cat("  type      : ", cfg$type, "\n", sep = "")
   cat("  penalties : ", paste(cfg$penalty, collapse = ", "), "\n", sep = "")
   cat("  s grid    : 0..", cfg$s_max, "\n", sep = "")
   cat("  reps      : ", cfg$m, "\n", sep = "")
   cat("  curves    : ", K, "\n", sep = "")
+  n_failed <- sum(x$results$n_failed)
+  if (n_failed > 0L)
+    cat("  failed    : ", n_failed, " fits excluded\n", sep = "")
   
   for (k in seq_len(K)) {
     cat(sprintf(
       "    [%d] n = %d, p = %d, penalty = %s\n",
       k,
-      x$curve_n[k],
-      x$curve_p[k],
-      x$curve_penalty[k]
+      curves$n[k],
+      curves$p[k],
+      curves$penalty[k]
     ))
   }
   
@@ -354,7 +394,7 @@ print.pic.phase_transition <- function(x, ...) {
 #' @param type Family name: `"gaussian"`, `"binomial"`,
 #'   `"poisson"`, `"exponential"`, `"gumbel"`, or `"cox"`.
 #' @param alpha Nominal level used for the (1 - alpha) quantile.
-#' @param n_simu Monte Carlo size for each selector.
+#' @param n_simu Monte Carlo size for each selector. Default 2000.
 #' @param verbose Logical; if `TRUE`, prints a one-line progress
 #'   message per `n`.
 #'
@@ -381,7 +421,7 @@ pdb_asymptotic <- function(
     type    = c("gaussian", "binomial", "poisson",
                 "exponential", "gumbel", "cox"),
     alpha   = 0.05,
-    n_simu  = 5000L,
+    n_simu  = 2000L,
     verbose = FALSE
 ) {
   type <- match.arg(type)
@@ -464,7 +504,6 @@ pdb_asymptotic <- function(
 #' @return Invisibly returns `x`.
 #' @export
 print.pic.pdb_asymptotic <- function(x, ...) {
-  K <- length(x$n_grid)
   cat("pic PDB asymptotic diagnostic\n")
   cat("  type      : ", x$type, "\n", sep = "")
   cat("  p         : ", x$p, "\n", sep = "")

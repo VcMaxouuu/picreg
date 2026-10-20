@@ -6,7 +6,7 @@
 #' Supported families are Gaussian, binomial, Poisson, exponential, Gumbel,
 #' and Cox proportional hazards.
 #'
-#' Minimises the objective function
+#' Minimizes the objective function
 #' \deqn{\hat\beta = \arg\min_\beta\; L(\beta)
 #'        \;+\; \lambda_\alpha^{\rm PDB}\,\mathrm{pen}(\beta)
 #'        \quad\text{with}\quad
@@ -22,8 +22,12 @@
 #' family-specific transformations chosen so that the gradient at the
 #' null has a distribution free of the nuisance parameter, which is
 #' precisely what makes the use of \eqn{\lambda^{\rm PDB}_\alpha}
-#' valid. Optimization is performed using a warm-started FISTA
-#' regularization path.
+#' valid. Optimization follows Section 3.3 of the paper: a warm-started
+#' FISTA path with the \eqn{\ell_1} penalty runs from \eqn{\lambda_{\max}}
+#' (the smallest \eqn{\lambda} for which \eqn{\beta = 0} is a solution)
+#' down to \eqn{\lambda}; for SCAD and MCP, a final stage then minimizes
+#' the criterion with the target penalty, initialized at the
+#' \eqn{\ell_1} solution.
 #'
 #' ## Details on family-specific losses
 #'
@@ -65,7 +69,7 @@
 #'   }
 #'   \item{`"gumbel"`}{
 #'     A location-scale model with extreme-value noise. The base
-#'     log-likelihood is
+#'     negative log-likelihood is
 #'     \deqn{\ell_n(\theta, \sigma) = \log(\sigma)
 #'       + \frac{1}{n}\sum_{i=1}^n \left(z_i + e^{-z_i}\right),
 #'       \qquad z_i = \frac{y_i - \theta_i}{\sigma}.}
@@ -92,10 +96,11 @@
 #' @param X Numeric design matrix of shape `(n, p)`, where rows are
 #'   observations and columns are candidate predictors. `X` may be a matrix
 #'   or a data frame coercible to a numeric matrix. It must contain at least
-#'   two columns and no `NA`, `NaN`, or infinite values. 
+#'   two columns and no `NA`, `NaN`, or infinite values.
 #' @param y Response variable with length `n`. For Gaussian and Gumbel models,
 #'   `y` must be numeric. For Binomial models, `y` must contain only `0` and
-#'   `1`. For Poisson and Exponential models, `y` must be non-negative. For
+#'   `1`, or be logical (`TRUE` = 1) or a two-level factor (second level
+#'   = 1). For Poisson and Exponential models, `y` must be non-negative. For
 #'   `family = "cox"`, `y` must be a two-column numeric matrix `(time, event)`,
 #'   where `time` is non-negative and `event` is coded as `0` or `1`.
 #' @param family A character name determining the response distribution and
@@ -116,9 +121,13 @@
 #'   intercept, so combining `standardize = TRUE` with `intercept = FALSE`
 #'   assumes the data are already centered (see `intercept`).
 #' @param intercept Whether to fit an unpenalized intercept. Forced to
-#'   `FALSE` for the Cox family. We assume the data has been centered if intercept = FALSE.
-#' @param lambda Optional user-supplied regularization parameter. When `NULL`,
-#'   [lambda_pdb()] is used to select it automatically. Providing `lambda`
+#'   `FALSE` for the Cox family. When `intercept = FALSE`, the data are
+#'   assumed to be centered.
+#' @param lambda Optional regularization parameter. When `NULL`,
+#'   [lambda_pdb()] is used to select it automatically. Either a single
+#'   non-negative number, or a `"pic.lambda_pdb"` object (typically
+#'   `fit$lambda_pdb` from a previous fit on the same `X` and family), whose
+#'   calibration is then reused and kept on the new fit. Providing `lambda`
 #'   avoids recomputing the PDB calibration, which is useful for example when
 #'   fitting several penalties (`"lasso"`, `"scad"`, `"mcp"`) on the same
 #'   dataset, since the PDB choice of \eqn{\lambda} does not depend on the
@@ -127,37 +136,47 @@
 #'   [lambda_pdb()] for details. The default `"mc_exact"` is a safe choice
 #'   for small to moderate designs; for very large \eqn{n} or \eqn{p},
 #'   `"mc_gaussian"` matches `"mc_exact"` closely at a fraction of the
-#'   cost (it amortises only one BLAS \eqn{\tt gemm}, no family-specific
-#'   residual draws), and `"analytical"` is closed-form.
-#' @param relax If `TRUE`, run an unpenalized refit on the selected support
-#'   after the regularization path (debiasing).
+#'   cost (it skips the family-specific null draws and residual
+#'   evaluations), and `"analytical"` is closed-form.
 #' @param mcp_gamma MCP concavity parameter when `penalty = "mcp"`. Default 3.0.
 #' @param scad_a SCAD concavity parameter when `penalty = "scad"`. Default 3.7.
 #' @param lambda_alpha Nominal level for PDB. See [lambda_pdb()].
 #' @param lambda_n_simu Number of Monte Carlo draws for PDB. See [lambda_pdb()].
+#' @param lambda_seed Optional seed for the Monte Carlo PDB calibration, for
+#'   a reproducible \eqn{\lambda}. Only the calibration is seeded; the
+#'   global random stream is left unchanged. Default `NULL` (no seeding).
 #' @param tol FISTA convergence tolerance at the final path step.
 #' @param path_length Number of points in the warm-start regularization
 #'   path running from \eqn{\lambda_{\max}} down to \eqn{\lambda^{\rm PDB}}.
 #'   Default 10.
-#' @param maxit Maximum number of iterations for FISTA if convergence is not yet reached.
+#' @param maxit Maximum number of FISTA iterations per path step. A warning
+#'   is issued if the final step does not converge within `maxit`.
 #'
 #' @return An object of class `c("pic.<family>", "pic")`.
-#'     \item{beta}{Fitted coefficients (length `p`).}
+#'     \item{call}{The matched call.}
+#'     \item{beta}{Fitted coefficients (length `p`), on the standardized
+#'       scale when `standardize = TRUE`. Use [coef.pic()] for the
+#'       original scale of `X`.}
 #'     \item{intercept}{Fitted intercept or `NULL`.}
 #'     \item{df}{The number of nonzero coefficients.}
-#'     \item{selected}{Indices of the nonzero coefficients.}
+#'     \item{selected}{Names of the selected variables when `X` has column
+#'       names, otherwise their integer column indices.}
 #'     \item{lambda}{\eqn{\lambda} used during training (PDB or user-supplied).}
 #'     \item{family}{The family object used.}
 #'     \item{penalty}{The penalty object used.}
-#'     \item{lambda_pdb}{Result from [lambda_pdb()] if \eqn{\lambda} is not user-supplied.}
+#'     \item{lambda_pdb}{The [lambda_pdb()] calibration, or `NULL` when a
+#'       numeric \eqn{\lambda} is supplied.}
 #'     \item{n_samples}{The number of observations in the training set.}
 #'     \item{n_features}{The number of variables in the training set.}
+#'     \item{n_iter}{Total number of FISTA iterations over the path.}
+#'     \item{converged}{Whether the final FISTA step reached `tol` within
+#'       `maxit` iterations.}
 #' For `family = "cox"`, the fit additionally carries:
 #'     \item{baseline_cumulative_hazard}{Estimated Breslow baseline cumulative hazard function.}
 #'     \item{baseline_survival}{Estimated baseline survival function.}
 #'     \item{unique_times}{Sorted unique event times used in the baseline estimation.}
 #'     \item{censoring_rate}{Percentage of censored observations in the training set.}
-#'     
+#'
 #' @examples
 #' data(QuickStartExample)
 #' X <- QuickStartExample$X
@@ -173,20 +192,36 @@ pic <- function(
   standardize = TRUE,
   intercept = TRUE,
   lambda_method = c("mc_exact", "mc_gaussian", "analytical"),
-  relax = FALSE,
   mcp_gamma = 3.0,
   scad_a = 3.7,
   lambda = NULL,
   lambda_alpha = 0.05,
   lambda_n_simu = 2000,
+  lambda_seed = NULL,
   tol = 1e-5,
   path_length = 10L,
   maxit = 1000
 ) {
+  fit_call <- match.call()
   lambda_method <- match.arg(lambda_method)
   family_obj  <- get_family(match.arg(family))
   penalty_obj <- get_penalty(penalty, scad_a = scad_a, mcp_gamma = mcp_gamma)
   family_name <- family_obj$name
+
+  standardize   <- .check_flag(standardize, "standardize")
+  intercept     <- .check_flag(intercept, "intercept")
+  lambda_alpha  <- .check_alpha(lambda_alpha, "lambda_alpha")
+  lambda_n_simu <- .check_positive_int(lambda_n_simu, "lambda_n_simu")
+  lambda_seed   <- .check_seed(lambda_seed, "lambda_seed")
+  tol           <- .check_positive(tol, "tol")
+  path_length   <- .check_positive_int(path_length, "path_length")
+  maxit         <- .check_positive_int(maxit, "maxit")
+  if (!is.null(lambda) && !inherits(lambda, "pic.lambda_pdb") &&
+      (!is.numeric(lambda) || length(lambda) != 1L || !is.finite(lambda) ||
+       lambda < 0)) {
+    stop("`lambda` must be NULL, a single non-negative number, or a ",
+         "`pic.lambda_pdb` object.", call. = FALSE)
+  }
 
   # Response kind drives validation in check_y / sorting for survival.
   y_kind <- switch(family_name,
@@ -198,14 +233,33 @@ pic <- function(
   
   if (family_name == "cox") intercept <- FALSE
 
-  prep <- check_Xy(X, y, y_kind = y_kind, standardize_X = standardize)
+  prep <- check_Xy(X, y, y_kind = y_kind, standardize_X = standardize,
+                   keep_feature_values = family_name == "cox")
   X_std <- prep$X
   y_use <- prep$y
 
-  if (is.null(lambda)) {
+  if (family_name == "gumbel" && all(y_use == y_use[1L])) {
+    stop("Gumbel location-scale fitting requires at least two distinct ",
+         "response values; the MLE is undefined for a constant response.",
+         call. = FALSE)
+  }
+
+  # Gumbel is location-equivariant. Fit on a centered response so a large
+  # absolute location cannot erase small residual-scale differences in C++.
+  gumbel_y_offset <- 0
+  if (family_name == "gumbel" && intercept) {
+    gumbel_y_offset <- y_use[1L]
+    y_use <- y_use - gumbel_y_offset
+  }
+
+  if (inherits(lambda, "pic.lambda_pdb")) {
+    .check_pdb_reuse(lambda, family_name, X_std)
+    pdb_obj <- lambda
+    lambda_val <- lambda$value
+  } else if (is.null(lambda)) {
     pdb_obj <- lambda_pdb(X_std, family_obj,
       n_simu = lambda_n_simu, alpha = lambda_alpha,
-      method = lambda_method
+      method = lambda_method, seed = lambda_seed
     )
     lambda_val <- pdb_obj$value
   } else {
@@ -213,62 +267,48 @@ pic <- function(
     lambda_val <- as.numeric(lambda)
   }
 
+  # Section 3.3 of the paper: an l1 path from lambda_max down to lambda,
+  # warm-started from the null fit, then for SCAD / MCP a target-penalty
+  # stage initialized at the l1 solution. When lambda >= lambda_max the
+  # origin is stationary for every penalty and the path is reduced to lambda.
   lambda_max_val <- .lambda_max(X_std, y_use, family_obj, intercept)
-  if (lambda_val == 0) {
-    lam_path <- 0
-    pen_path <- list(penalty_obj)
-    tol_path <- tol
-  } else if (lambda_val >= lambda_max_val) {
+  if (lambda_val == 0 || lambda_val >= lambda_max_val || path_length == 1L) {
     lam_path <- lambda_val
-    pen_path <- list(penalty_obj)
-    tol_path <- tol
   } else {
-    K <- max(1L, as.integer(path_length))
-    if (K == 1L) {
-      lam_path <- lambda_val
-      pen_path <- list(penalty_obj)
-      tol_path <- tol
-    } else {
-      lam_path <- exp(seq(log(lambda_max_val), log(lambda_val),
-                          length.out = K))
-      pen_path <- c(replicate(K - 1L, .lasso(), simplify = FALSE),
-                    list(penalty_obj))
-      tol_path <- c(rep(1e-3, K - 1L), tol)
-    }
+    lam_path <- exp(seq(log(lambda_max_val), log(lambda_val),
+                        length.out = path_length))
+  }
+  tol_path <- c(rep(1e-3, length(lam_path) - 1L), tol)
+  stages <- lapply(seq_along(lam_path), function(k) {
+    list(penalty = .lasso(), lambda = lam_path[k], tol = tol_path[k])
+  })
+  if (penalty_obj$name != "lasso" && lambda_val > 0) {
+    stages <- c(stages,
+                list(list(penalty = penalty_obj, lambda = lambda_val, tol = tol)))
   }
 
-  coef_prev <- NULL
-  int_prev <- NULL
-  coef_ <- numeric(ncol(X_std))
-  int_ <- 0.0   # placeholder; overwritten by the path loop below
-
-  for (idx in seq_along(lam_path)) {
+  coef_ <- NULL
+  int_ <- NULL
+  n_iter <- 0L
+  for (stage in stages) {
     out <- fista(
       X = X_std, y = y_use, family = family_obj,
-      penalty = pen_path[[idx]], lambda_reg = lam_path[[idx]],
-      fit_intercept = intercept, rel_tol = tol_path[[idx]],
-      coef_init = coef_prev, intercept_init = int_prev, max_iter = maxit
+      penalty = stage$penalty, lambda_reg = stage$lambda,
+      fit_intercept = intercept, rel_tol = stage$tol,
+      coef_init = coef_, intercept_init = int_, max_iter = maxit
     )
-    coef_ <- out$coef
+    coef_ <- as.numeric(out$coef)
     int_ <- out$intercept
-    coef_prev <- coef_
-    int_prev <- int_
+    n_iter <- n_iter + out$n_iter
+  }
+  if (!out$converged) {
+    warning(sprintf(paste0("FISTA did not converge within `maxit` = %d ",
+                           "iterations; consider increasing `maxit`."),
+                    maxit), call. = FALSE)
   }
 
-  if (relax) {
-    support <- which(coef_ != 0)
-    if (length(support) > 0L) {
-      out <- fista(
-        X = X_std[, support, drop = FALSE], y = y_use, family = family_obj,
-        penalty = penalty_obj, lambda_reg = 0.0,
-        fit_intercept = intercept, rel_tol = 1e-3,
-        coef_init = coef_[support], intercept_init = int_, max_iter = maxit
-      )
-      coef_full <- numeric(length(coef_))
-      coef_full[support] <- out$coef
-      coef_ <- coef_full
-      int_ <- out$intercept
-    }
+  if (family_name == "gumbel" && intercept) {
+    int_ <- int_ + gumbel_y_offset
   }
 
   sel_idx <- which(coef_ != 0)
@@ -276,6 +316,7 @@ pic <- function(
   selected_out <- if (!is.null(feature_names)) feature_names[sel_idx] else sel_idx
 
   fit <- list(
+    call          = fit_call,
     beta          = coef_,
     intercept     = if (intercept) int_ else NULL,
     df            = length(sel_idx),
@@ -285,21 +326,24 @@ pic <- function(
     penalty       = penalty_obj,
     lambda_pdb    = pdb_obj,
     n_samples     = nrow(X_std),
-    n_features    = ncol(X_std)
+    n_features    = ncol(X_std),
+    n_iter        = n_iter,
+    converged     = out$converged
   )
 
   class(fit) <- c(paste0("pic.", family_name), "pic")
 
-  # Per-column default value grids are only retained for Cox fits, where
+  # Per-column default value grids are only computed for Cox fits, where
   # `feature_effects_on_survival()` uses them to spare the user from
-  # passing the training X back in. Kept NULL for the other families to
-  # avoid useless memory bloat.
+  # passing the training X back in. `y_levels` records the levels of a
+  # factor binomial response so that `assess()` maps new responses alike.
   attr(fit, "preproc") <- list(
     X_mean         = prep$X_mean,
     X_std          = prep$X_std,
     standardize    = standardize,
     feature_names  = feature_names,
-    feature_values = if (family_name == "cox") prep$feature_values else NULL
+    feature_values = prep$feature_values,
+    y_levels       = prep$y_levels
   )
 
   # Cox-specific post-fit: baseline cumulative hazard / survival.
@@ -313,4 +357,21 @@ pic <- function(
   }
 
   fit
+}
+
+# A `pic.lambda_pdb` object passed as `lambda` must come from the same
+# family and design dimensions. Objects from older versions lack these
+# fields and are accepted as is.
+.check_pdb_reuse <- function(pdb, family_name, X) {
+  if (!is.null(pdb$family) && !identical(pdb$family, family_name)) {
+    stop(sprintf("`lambda` was calibrated for the %s family, not %s.",
+                 pdb$family, family_name), call. = FALSE)
+  }
+  if (!is.null(pdb$p) &&
+      (!identical(pdb$n, nrow(X)) || !identical(pdb$p, ncol(X)))) {
+    stop(sprintf(paste0("`lambda` was calibrated on a %d x %d design, ",
+                        "but `X` is %d x %d."),
+                 pdb$n, pdb$p, nrow(X), ncol(X)), call. = FALSE)
+  }
+  invisible(NULL)
 }

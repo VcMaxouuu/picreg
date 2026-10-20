@@ -9,7 +9,7 @@ pdb_asymptotic(
   p,
   type = c("gaussian", "binomial", "poisson", "exponential", "gumbel", "cox"),
   alpha = 0.05,
-  n_simu = 5000L,
+  n_simu = 2000L,
   verbose = FALSE
 )
 }
@@ -23,7 +23,7 @@ pdb_asymptotic(
 
 \item{alpha}{Nominal level used for the (1 - alpha) quantile.}
 
-\item{n_simu}{Monte Carlo size for each selector.}
+\item{n_simu}{Monte Carlo size for each selector. Default 2000.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints a one-line progress
 message per \code{n}.}

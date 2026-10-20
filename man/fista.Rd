@@ -52,7 +52,9 @@ fista(
 \item{coef_init, intercept_init}{Optional warm starts.}
 }
 \value{
-A list with \code{coef}, \code{intercept}, \code{info}.
+A list with \code{coef}, \code{intercept} (\code{NULL} without intercept),
+\code{n_iter} (number of iterations run) and \code{converged} (whether \code{rel_tol}
+was reached within \code{max_iter}).
 }
 \description{
 Thin R wrapper around the C++ \code{fista_cpp} implementation. The actual

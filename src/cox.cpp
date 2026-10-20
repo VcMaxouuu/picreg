@@ -83,24 +83,10 @@ static double raw_partial_loglik(const CoxData& cd,
   return loss / (double) cd.n;
 }
 
-// --------------------------------------------------------------------------
-// Public math.
-// --------------------------------------------------------------------------
-
-double evaluate(const CoxData& cd, const arma::vec& lp) {
-  arma::vec exp_shifted, risk_sum, log_risk;
-  double m;
-  compute_risk_sums(lp, exp_shifted, risk_sum, log_risk, m);
-  double raw = raw_partial_loglik(cd, lp, log_risk);
-  return std::sqrt(std::max(raw, 0.0));   // phi = sqrt
-}
-
-arma::vec residual(const CoxData& cd, const arma::vec& lp) {
-  arma::vec exp_shifted, risk_sum, log_risk;
-  double m;
-  compute_risk_sums(lp, exp_shifted, risk_sum, log_risk, m);
-
-  // raw_loss_derivative
+// Derivative of the raw loss with respect to the linear predictor.
+static arma::vec raw_grad_eta(const CoxData& cd,
+                              const arma::vec& exp_shifted,
+                              const arma::vec& risk_sum) {
   arma::vec grad_eta(cd.n);
   if (cd.has_ties) {
     arma::vec rs_per_time = risk_sum.elem(cd.starts);
@@ -120,17 +106,47 @@ arma::vec residual(const CoxData& cd, const arma::vec& lp) {
     arma::vec cum_coeff = arma::cumsum(coeff);
     grad_eta = (-cd.events + exp_shifted % cum_coeff) / (double) cd.n;
   }
+  return grad_eta;
+}
 
-  // phi = sqrt → phi'(raw) = 0.5 / sqrt(raw)
+// phi = sqrt → phi'(raw) = 0.5 / sqrt(raw)
+static double phi_prime(double raw) {
+  return 0.5 / std::sqrt(std::max(raw, 1e-30));
+}
+
+// --------------------------------------------------------------------------
+// Public math.
+// --------------------------------------------------------------------------
+
+double evaluate(const CoxData& cd, const arma::vec& lp) {
+  arma::vec exp_shifted, risk_sum, log_risk;
+  double m;
+  compute_risk_sums(lp, exp_shifted, risk_sum, log_risk, m);
   double raw = raw_partial_loglik(cd, lp, log_risk);
-  raw = std::max(raw, 1e-30);
-  double phi_prime = 0.5 / std::sqrt(raw);
-  return phi_prime * grad_eta;
+  return std::sqrt(std::max(raw, 0.0));   // phi = sqrt
+}
+
+arma::vec residual(const CoxData& cd, const arma::vec& lp) {
+  arma::vec exp_shifted, risk_sum, log_risk;
+  double m;
+  compute_risk_sums(lp, exp_shifted, risk_sum, log_risk, m);
+  double raw = raw_partial_loglik(cd, lp, log_risk);
+  return phi_prime(raw) * raw_grad_eta(cd, exp_shifted, risk_sum);
 }
 
 CoxGradResult grad(const arma::mat& X, const CoxData& cd, const arma::vec& lp) {
   arma::vec r = residual(cd, lp);
   return { X.t() * r, 0.0 };
+}
+
+CoxValueGradResult value_grad(const arma::mat& X, const CoxData& cd,
+                              const arma::vec& lp) {
+  arma::vec exp_shifted, risk_sum, log_risk;
+  double m;
+  compute_risk_sums(lp, exp_shifted, risk_sum, log_risk, m);
+  double raw = raw_partial_loglik(cd, lp, log_risk);
+  arma::vec r = phi_prime(raw) * raw_grad_eta(cd, exp_shifted, risk_sum);
+  return { std::sqrt(std::max(raw, 0.0)), X.t() * r };
 }
 
 }  // namespace picr::cox

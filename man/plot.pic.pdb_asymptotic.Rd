@@ -24,7 +24,7 @@ vertical lines are added per panel:
 \itemize{
 \item \eqn{\hat\lambda^{\rm PDB}_\alpha} - solid navy, the empirical (1 - alpha)
 quantile of \code{"mc_exact"} (what pic would actually use).
-\item \eqn{\hat\lambda_{analytical}} - dashed black, the Bonferroni
+\item \eqn{\hat\lambda_{analytical}} - dotted black, the Bonferroni
 closed-form bound.
 }
 }

@@ -12,8 +12,11 @@
 \item{newx}{Matrix of new values at which predictions are to be made.}
 
 \item{type}{\code{"link"} (linear predictor), \code{"response"} (default; family
-\code{g}-link applied), \code{"class"} (binomial only), or \code{"survival"} (Cox only;
-returns a list with components \code{time} and \code{survival}).}
+\code{g}-link applied, and for Cox the relative risk \eqn{\exp(\eta)}, as
+in \pkg{glmnet}), \code{"class"} (binomial only; \code{0}/\code{1} labels, where \code{1}
+stands for \code{TRUE} or the second factor level of the training response),
+or \code{"survival"} (Cox only; returns a list with components \code{time} and
+\code{survival}).}
 
 \item{...}{Unused; present for S3 method consistency.}
 }

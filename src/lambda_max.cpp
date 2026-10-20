@@ -28,6 +28,15 @@ double lambda_max_cpp(const arma::mat& X,
                       std::string family_name,
                       bool fit_intercept) {
   picr::Family fam = picr::get_family(family_name);
+
+  // Gumbel has two nuisance parameters under the null (location and scale).
+  // Its zero-threshold must therefore use their joint MLE, not a moment-based
+  // intercept followed by a conditional scale estimate.
+  if (family_name == "gumbel" && fit_intercept) {
+    picr::gumbel::NullResult null = picr::gumbel::null_fit(y);
+    return arma::max(arma::abs(X.t() * null.residual));
+  }
+
   const double b0 = fit_intercept ? fam.starting_intercept(y) : 0.0;
   arma::vec lp(X.n_rows, arma::fill::value(b0));
   picr::GradResult g = fam.grad(X, y, lp);

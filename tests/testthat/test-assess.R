@@ -56,6 +56,18 @@ test_that("Cox assess reports c_index and partial_log_likelihood", {
   expect_lte(c_idx, 1)
 })
 
+test_that("Gumbel assess profiles scale by maximum likelihood", {
+  set.seed(307)
+  y <- 3 + 1.5 * (-log(-log(runif(60))))
+  eta <- rnorm(60)
+  out <- picreg:::.assess_gumbel(y, eta)
+  profile <- picreg:::gumbel_profile_cpp(y, eta)
+
+  expect_equal(out$metric, c("MSE", "MAE", "deviance"))
+  expect_equal(out$value[out$metric == "deviance"],
+               2 * profile$raw_loss, tolerance = 1e-13)
+})
+
 test_that("true_features appends support-recovery metrics", {
   set.seed(305)
   data(QuickStartExample)

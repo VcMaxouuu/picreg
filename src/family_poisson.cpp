@@ -1,12 +1,12 @@
 // Poisson family — log link, identity stabiliser.
 //
 //
-//   mu           = g(lp) = lp
+//   mu           = g(lp) = exp(lp)
 //   raw          = 2 * mean( y / sqrt(mu) + sqrt(mu) )
 //   evaluate     = raw
-//   residual     = phi'(raw) * g'(lp) * raw_loss_derivative
+//   residual     = g'(lp) * raw_loss_derivative
 //                = mu * (1/n) * (mu - y) / mu^1.5
-//                = (lp - y) / (n * sqrt(raw))
+//                = (mu - y) / (n * sqrt(mu))
 
 #include "family_base.h"
 
