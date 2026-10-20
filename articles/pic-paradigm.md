@@ -52,9 +52,9 @@ so that, by construction, \mathbb P\_{H_0}(\hat{\boldsymbol\beta} =
 \mathbf 0) = 1 - \alpha. In words: choose the smallest \lambda that
 keeps pure noise from being selected with probability 1-\alpha. The
 level \alpha (default 0.05) plays the role of a nominal false-discovery
-level under the null. Choosing \lambda \< \lambda\_\alpha^{\rm PDB}
+level under the null. Choosing \lambda \< \lambda\_\alpha^{\mathrm{DB}}
 floods the model with false positives, whereas \lambda \>
-\lambda\_\alpha^{\rm PDB} needlessly misses true signals.
+\lambda\_\alpha^{\mathrm{DB}} needlessly misses true signals.
 
 ## Why “pivotal”
 

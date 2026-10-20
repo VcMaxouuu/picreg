@@ -15,7 +15,7 @@ $$\hat\lambda^{\rm PDB}_\alpha =q_{1-\alpha}\left(\left\|\nabla \ell_0\right\|_\
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,9 +62,10 @@ $$\hat\lambda^{\rm PDB}_\alpha =q_{1-\alpha}\left(\left\|\nabla \ell_0\right\|_\
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">lambda_pdb</span><span class="op">(</span></span>
 <span>  <span class="va">X</span>,</span>
 <span>  <span class="va">family</span>,</span>
-<span>  n_simu <span class="op">=</span> <span class="fl">5000L</span>,</span>
+<span>  n_simu <span class="op">=</span> <span class="fl">2000L</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
-<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mc_exact"</span>, <span class="st">"mc_gaussian"</span>, <span class="st">"analytical"</span><span class="op">)</span></span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mc_exact"</span>, <span class="st">"mc_gaussian"</span>, <span class="st">"analytical"</span><span class="op">)</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -84,7 +85,7 @@ or a character string accepted by <code><a href="get_family.html">get_family()</
 
 <dt id="arg-n-simu">n_simu<a class="anchor" aria-label="anchor" href="#arg-n-simu"></a></dt>
 <dd><p>Number of Monte Carlo simulations used by the stochastic
-methods. Ignored when <code>method = "analytical"</code>.</p></dd>
+methods. Ignored when <code>method = "analytical"</code>. Default 2000.</p></dd>
 
 
 <dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
@@ -92,7 +93,13 @@ methods. Ignored when <code>method = "analytical"</code>.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>One of "mc_exact", "mc_gaussian", or "analytical".</p></dd>
+<dd><p>One of <code>"mc_exact"</code>, <code>"mc_gaussian"</code>, or <code>"analytical"</code>.</p></dd>
+
+
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>Optional seed for the Monte Carlo draws, for a reproducible
+\(\hat\lambda\). The caller's random stream is restored afterwards.
+Default <code>NULL</code> (no seeding).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -112,7 +119,17 @@ methods. Ignored when <code>method = "analytical"</code>.</p></dd>
 <dd><p>Quantile level parameter.</p></dd>
 
 <dt>n_simu</dt>
-<dd><p>Number of Monte Carlo simulations.</p></dd>
+<dd><p>Number of Monte Carlo simulations (<code>NA</code> for the
+analytical method).</p></dd>
+
+<dt>seed</dt>
+<dd><p>The seed used, or <code>NULL</code>.</p></dd>
+
+<dt>family</dt>
+<dd><p>Name of the family.</p></dd>
+
+<dt>n, p</dt>
+<dd><p>Dimensions of <code>X</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -138,7 +155,9 @@ through one of the three methods below.</p><div class="section">
 response vector is sampled under the null model
 (\(\beta = 0\)) of the chosen family; the family-specific
 gradient of the loss at \(\beta = 0\) is evaluated on the
-fixed design \(X\), and its supremum norm is recorded. The
+fixed design \(X\), and its supremum norm is recorded. For Gumbel,
+both null location and scale are estimated jointly by maximum
+likelihood for every draw. The
 empirical \((1 - \alpha)\) quantile of the <code>n_simu</code> recorded
 norms is returned. Most accurate but slowest of the three.</p></dd>
 
@@ -159,8 +178,9 @@ the standard Gaussian tail bound gives
 $$\hat\lambda_\alpha^{\rm analytical} =
           \Phi^{-1}\!\left(1 - \alpha / (2p)\right)\, \sqrt{c(n) / n}.$$
 Deterministic and \(O(1)\) — no simulation. Conservative
-(slightly over-estimates the true quantile) and gets looser as
-\(p\) grows, but useful when speed matters or when Monte
+(over-estimates the true quantile): nearly exact when the columns
+of \(X\) are weakly correlated, increasingly conservative under
+strong correlation. Useful when speed matters or when Monte
 Carlo is overkill.</p></dd>
 
 
@@ -175,19 +195,20 @@ factor \(c(n)\) depending on the family:</p>
 <h3 id="computational-cost">Computational cost<a class="anchor" aria-label="anchor" href="#computational-cost"></a></h3>
 
 
-<p>Both Monte Carlo methods are dominated by a single \(p \times n_{\rm simu}\)
+<p>Both Monte Carlo methods are dominated by the \(p \times n_{\rm simu}\)
 matrix product \(X^\top R\), where \(R\) stacks the simulated
-residuals. This product is dispatched to BLAS as a single \(\tt gemm\),
-which is essentially as fast as a Monte Carlo selector can be on dense
-designs. For very large \(n\) or \(p\), however, the constant
+residuals. This product is dispatched to BLAS as \(\tt gemm\) calls
+over blocks of draws, which bounds the memory footprint without changing
+the result, and is essentially as fast as a Monte Carlo selector can be
+on dense designs. For very large \(n\) or \(p\), however, the constant
 becomes large and <code>"mc_exact"</code> may be unnecessarily expensive:</p>
 <ul><li><p>As \(n\) grows, the central-limit approximation tightens
 and <code>"mc_gaussian"</code> gives essentially the same \(\hat\lambda\)
 as <code>"mc_exact"</code> at a fraction of the cost (no family-specific
 residual generation, fewer dependencies on \(y\)-draws).</p></li>
 <li><p><code>"analytical"</code> is \(O(1)\) and useful as a quick upper
-bound — slightly conservative, but accurate enough for triage
-and for very high \(p\) where the Bonferroni tail is tight.</p></li>
+bound — conservative, but accurate enough for triage and for
+weakly correlated designs, where the union bound is nearly tight.</p></li>
 </ul><p>Practical rule of thumb: prefer <code>"mc_exact"</code> for small to moderate
 problems (default), <code>"mc_gaussian"</code> once \(n\) grows and the
 design is dense, and <code>"analytical"</code> when even the Monte Carlo cost is
@@ -202,8 +223,8 @@ a concern.</p>
 \(H_0\!\colon \beta = 0\). By construction of the quantile,
 $$\Pr\!\left(\left\|\nabla \ell_0\right\|_\infty
   &gt; \hat\lambda^{\rm PDB}_\alpha \,\big|\, H_0\right) = \alpha,$$
-so under the null model no variable enters the active set with
-probability at most \(\alpha\). With the default
+so under the null model at least one variable enters the active set
+with probability at most \(\alpha\). With the default
 \(\alpha = 0.05\), this caps the false-discovery rate at \(5\%\)
 under the null: when the data carry no signal, picreg returns the
 empty support \(95\%\) of the time.</p>
@@ -222,7 +243,7 @@ empty support \(95\%\) of the time.</p>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>lambda_pdb: design matrix X does not appear standardized; results may be unreliable.</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">lam</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> pic lambda_pdb (method = mc_exact, alpha = 0.05)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   lambda = 0.295355</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lambda = 0.297525</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

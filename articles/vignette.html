@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,7 +67,7 @@ Cutsem</h4>
                         <h4 data-toc-skip class="author">Sylvain
 Sardy</h4>
             
-            <h4 data-toc-skip class="date">August 31, 2026</h4>
+            <h4 data-toc-skip class="date">October 20, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/VcMaxouuu/picreg/blob/main/vignettes/vignette.Rmd" class="external-link"><code>vignettes/vignette.Rmd</code></a></small>
       <div class="d-none name"><code>vignette.Rmd</code></div>
@@ -88,7 +88,7 @@ cross-validation and achieves more accurate support recovery by better
 identifying the true non-zero coefficients. The package fits the
 resulting estimators across six response distributions - Gaussian,
 binomial, Poisson, exponential, Gumbel, and Cox - combined with three
-sparsity-inducing penalties; <span class="math inline">\ell_1</span>
+sparsity-inducing penalties: <span class="math inline">\ell_1</span>
 (LASSO), the Smoothly Clipped Absolute Deviation (SCAD), and Minimax
 Concave Penalty (MCP).</p>
 <p>Given data <span class="math inline">\mathcal{D} = (X, y)</span>,
@@ -107,13 +107,17 @@ Information Criterion (PIC) by solving <span class="math display">
 \boldsymbol{\theta} = g\bigl(\beta_0\mathbf{1} +
 X\boldsymbol{\beta}\bigr),
 </span> where <span class="math inline">\lambda_\alpha^{\mathrm{PDB}}</span> is the
-pre-fixed for the parameter <span class="math inline">\lambda</span>
-chosen as the upper <span class="math inline">\alpha</span>-quantile of
-a statistic <span class="math inline">\Lambda</span> made pivotal with
-respect to unknown parameters <span class="math inline">\sigma,\,
-\beta_0</span> thanks to the distribution-specific pair <span class="math inline">(\phi,\, g)</span>.</p>
+pre-fixed <em>pivotal detection boundary</em> for the parameter <span class="math inline">\lambda</span> chosen as the upper <span class="math inline">\alpha</span>-quantile of a statistic <span class="math inline">\Lambda</span> made pivotal with respect to unknown
+parameters <span class="math inline">\sigma,\, \beta_0</span> thanks to
+the distribution-specific pair <span class="math inline">(\phi,\,
+g)</span>.</p>
 <p>Internally, <code>picreg</code> uses FISTA (Fast Iterative
-Soft-Thresholding Algorithm) as the optimization scheme.</p>
+Shrinkage-Thresholding Algorithm) as the optimization scheme: a
+warm-started <span class="math inline">\ell_1</span> path runs from the
+smallest <span class="math inline">\lambda</span> that sets all
+coefficients to zero down to <span class="math inline">\lambda_\alpha^{\mathrm{PDB}}</span>, and for SCAD
+and MCP a final stage minimizes the criterion with the target penalty,
+starting from the <span class="math inline">\ell_1</span> solution.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -217,7 +221,8 @@ analysis:</p>
 carrying column names, <code>picreg</code> uses them throughout the
 output. As shown above, <code>fit$selected</code> returns the
 <strong>names</strong> of the selected variables rather than their
-integer indices. Bare matrices fall back to the default
+integer indices. For bare matrices, <code>fit$selected</code> holds
+integer column indices and <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> falls back to the default
 <code>V1, ..., Vp</code> naming.</p>
 </div>
 <div class="section level3">
@@ -260,10 +265,11 @@ predictions are desired. Two types are universally available:
 <code>"link"</code> (the linear predictor <span class="math inline">X\boldsymbol{\beta} + \beta_0</span>) and
 <code>"response"</code> (the mean response <span class="math inline">g(\eta)</span>). In the Gaussian case of course
 (since <span class="math inline">g</span> is the identity), both types
-gives the same outputs. Binomial fits additionally accept
+give the same outputs. Binomial fits additionally accept
 <code>type = "class"</code> for hard label prediction, and Cox fits
 accept <code>type = "survival"</code> for subject-specific survival
-curves (see the Cox section below).</p>
+curves (see the Cox section below). For Cox fits,
+<code>"response"</code> returns the relative risk <span class="math inline">\exp(\eta)</span>, as in <code>glmnet</code>.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, newx <span class="op">=</span> <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="op">]</span><span class="op">)</span>                  <span class="co"># response</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]  0.4305631  1.8606175 -1.0359871  1.1197544  0.2146807</span></span></code></pre>
@@ -309,6 +315,12 @@ underlying distribution <code>family</code>, and <span class="math inline">\alph
 response data <span class="math inline">y</span>. As a result, the
 tuning-free parameter <span class="math inline">\lambda_\alpha^{\mathrm{PDB}}</span> can be
 determined a priori.</p>
+<p>Since <span class="math inline">\lambda_\alpha^{\mathrm{PDB}}</span>
+is estimated by Monte Carlo (see below), two calls may return slightly
+different values. Passing <code>lambda_seed</code> to <code><a href="../reference/pic.html">pic()</a></code>
+(or <code>seed</code> to <code><a href="../reference/lambda_pdb.html">lambda_pdb()</a></code>) makes the
+calibration reproducible; only the calibration is seeded, and the global
+random stream is left unchanged.</p>
 <div class="section level4">
 <h4 id="calculation-methods">Calculation methods<a class="anchor" aria-label="anchor" href="#calculation-methods"></a>
 </h4>
@@ -317,7 +329,7 @@ determined a priori.</p>
 <ul>
 <li><p><strong><code>"mc_exact"</code> (default).</strong>
 Distribution/family-aware Monte Carlo: for each of
-<code>lambda_n_simu</code> draw, a null response is sampled, the
+<code>lambda_n_simu</code> draws, a null response is sampled, the
 distribution-specific gradient is evaluated at <span class="math inline">\boldsymbol{\beta} = \mathbf{0}</span>, and its
 supremum norm is recorded. The empirical <span class="math inline">(1-\alpha)</span> quantile of the simulated norms is
 returned.</p></li>
@@ -375,11 +387,15 @@ across penalties on the same dataset - can be supplied directly via the
 is then skipped. This is particularly useful when comparing the three
 penalties (LASSO, SCAD, MCP) on the same problem, since the PDB choice
 of <span class="math inline">\lambda</span> does not depend on the
-penalty itself.</p>
+penalty itself. Passing the calibration object
+<code>fit$lambda_pdb</code> rather than the number
+<code>fit$lambda</code> also keeps it on the new fits, so that
+<code><a href="../reference/pdb_summary.html">pdb_summary()</a></code> and <code>plot(fit$lambda_pdb)</code> remain
+available.</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_lasso</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, penalty <span class="op">=</span> <span class="st">"lasso"</span>, lambda <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">lambda</span><span class="op">)</span></span>
-<span><span class="va">fit_scad</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, penalty <span class="op">=</span> <span class="st">"scad"</span>,  lambda <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">lambda</span><span class="op">)</span></span>
-<span><span class="va">fit_mcp</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, penalty <span class="op">=</span> <span class="st">"mcp"</span>,   lambda <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">lambda</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">fit_lasso</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, penalty <span class="op">=</span> <span class="st">"lasso"</span>, lambda <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">lambda_pdb</span><span class="op">)</span></span>
+<span><span class="va">fit_scad</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, penalty <span class="op">=</span> <span class="st">"scad"</span>,  lambda <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">lambda_pdb</span><span class="op">)</span></span>
+<span><span class="va">fit_mcp</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, penalty <span class="op">=</span> <span class="st">"mcp"</span>,   lambda <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">lambda_pdb</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  penalty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lasso"</span>, <span class="st">"scad"</span>, <span class="st">"mcp"</span><span class="op">)</span>,</span>
@@ -409,7 +425,7 @@ distribution uses the MSE for <span class="math inline">l_n</span> and
 <span class="math inline">\phi(\cdot) = \sqrt{\cdot}</span>, <span class="math inline">g(\cdot) = \mathrm{Id}</span> as transformations,
 resulting in the square-root LASSO objective <span class="math display">
 \min_{\beta_0,\,\boldsymbol{\beta}}\left\{\sqrt{\frac1n\sum_{i=1}^n\left(y_i-(\beta_0+\mathbf
-x_i^T\boldsymbol\beta\right)^2}
+x_i^T\boldsymbol\beta)\right)^2}
   + \lambda_\alpha^{\mathrm{PDB}}\, P(\boldsymbol{\beta})\right\}.
 </span> This is the canonical pivotal alternative to the standard
 squared loss: it makes the gradient at <span class="math inline">\boldsymbol{\beta} = 0</span> scale-free, so the PDB
@@ -422,18 +438,20 @@ deviation.</p>
 <p><code>family = "binomial"</code> is used for logistic regression when
 the responses <span class="math inline">y_i \in \{0, 1\}</span> are
 binary. In this case, <code>pic</code> requires <code>y</code> to be a
-vector containing only <span class="math inline">0</span> and <span class="math inline">1</span> values. Any other format or values in
-<code>y</code> will return an error. <code>picreg</code> uses a
-variance-stabilized transformation of the Bernoulli likelihood. With
-<span class="math inline">\phi(\cdot) = \mathrm{Id}</span> and the
-logistic link <span class="math inline">\theta_i = g(\eta_i) = (1 +
+vector containing only <span class="math inline">0</span> and <span class="math inline">1</span> values, a logical vector (<code>TRUE</code>
+mapped to <span class="math inline">1</span>), or a two-level factor
+(second level mapped to <span class="math inline">1</span>, as in
+<code>glmnet</code>). Any other format or values in <code>y</code> will
+return an error. <code>picreg</code> uses a variance-stabilized
+transformation of the Bernoulli likelihood. With <span class="math inline">\phi(\cdot) = \mathrm{Id}</span> and the logistic
+link <span class="math inline">\theta_i = g(\eta_i) = (1 +
 e^{-\eta_i})^{-1}</span>, <code>pic(family = "binomial")</code>
 minimizes <span class="math display">
 \min_{\beta_0, \boldsymbol\beta}\left\{
 \frac{1}{n}\sum_{i=1}^{n}\left(
   2 y_i \sqrt{\tfrac{1 - \theta_i}{\theta_i}}
 + 2 (1 - y_i) \sqrt{\tfrac{\theta_i}{1 - \theta_i}}
-\right)+\lambda_\alpha^{\rm PBD}P(\boldsymbol\beta)\right\}, \qquad
+\right)+\lambda_\alpha^{\rm PDB}P(\boldsymbol\beta)\right\}, \qquad
 \theta_i = \frac{1}{1+\exp(-(\beta_0+\mathbf x_i^T\boldsymbol\beta))}
 </span> The classical logistic link is preserved; only the loss itself
 is modified to obtain a pivotal gradient at the null.</p>
@@ -474,23 +492,23 @@ Poisson likelihood. With <span class="math inline">\phi(\cdot) =
 </span> The canonical log link is kept unchanged; the pivotal property
 is obtained through the loss rather than through the link.
 <code>pic</code> requires <code>y</code> to be a vector containing only
-non negative values.</p>
+non-negative values.</p>
 </div>
 <div class="section level3">
 <h3 id="exponential">Exponential<a class="anchor" aria-label="anchor" href="#exponential"></a>
 </h3>
 <p>The standard Exponential negative log-likelihood is used directly, no
-transformation are needed. With <span class="math inline">\phi(\cdot) =
+transformation is needed. With <span class="math inline">\phi(\cdot) =
 \mathrm{Id}</span> and <span class="math inline">\theta_i = g(\eta_i) =
 e^{\eta_i}</span>, <code>pic(family = "exponential")</code> minimizes
 <span class="math display">
 \min_{\beta_0, \boldsymbol\beta}\left\{
 \frac{1}{n}\sum_{i=1}^{n}\left(
   \log{\theta_i} + \frac{y_i}{\theta_i}
-\right)+\lambda_\alpha^{\rm PDB}\right\}, \qquad \theta_i =
-\exp(\beta_0+\mathbf x_i^T\boldsymbol\beta).
+\right)+\lambda_\alpha^{\rm PDB}P(\boldsymbol\beta)\right\}, \qquad
+\theta_i = \exp(\beta_0+\mathbf x_i^T\boldsymbol\beta).
 </span> Again, <code>pic</code> requires <code>y</code> to be a vector
-containing only non negative values.</p>
+containing only non-negative values.</p>
 </div>
 <div class="section level3">
 <h3 id="gumbel">Gumbel<a class="anchor" aria-label="anchor" href="#gumbel"></a>
@@ -503,9 +521,9 @@ l_n(\boldsymbol{\theta}, \sigma) =
 \qquad z_i = \frac{y_i - \theta_i}{\sigma}.
 </span> With <span class="math inline">\phi(\cdot) = \exp(\cdot)</span>
 and the identity link <span class="math inline">\theta_i = g(\eta_i) =
-\eta_i</span>, the optimization objective is <span class="math inline">\phi\bigl(\ell_n(\boldsymbol{\theta}, \sigma;
+\eta_i</span>, the optimization objective is <span class="math inline">\phi\bigl(l_n(\boldsymbol{\theta}, \sigma;
 \mathcal{D})\bigr) =
-\exp\bigl(\ell_n(\boldsymbol{\theta}, \sigma)\bigr)</span>. The scale
+\exp\bigl(l_n(\boldsymbol{\theta}, \sigma)\bigr)</span>. The scale
 parameter <span class="math inline">\sigma</span> is re-estimated
 internally by maximum likelihood at every iteration; the user does not
 pass it explicitly.</p>
@@ -513,7 +531,7 @@ pass it explicitly.</p>
 <div class="section level3">
 <h3 id="cox">Cox<a class="anchor" aria-label="anchor" href="#cox"></a>
 </h3>
-<p>The Cox proportional-hazard model is the survival counterpart of the
+<p>The Cox proportional-hazards model is the survival counterpart of the
 other GLMs. The response <code>y</code> must be a two-column matrix
 <span class="math inline">(t_i, \delta_i)</span> of event times and
 event indicators (<span class="math inline">\delta_i = 1</span> if
@@ -665,31 +683,20 @@ returns a two-column <code>data.frame</code> with columns
 <div class="section level3">
 <h3 id="a-note-on-bias-and-refitting">A note on bias and refitting<a class="anchor" aria-label="anchor" href="#a-note-on-bias-and-refitting"></a>
 </h3>
-<p>A word of caution when interpreting the predictive metrics: by
-default <code><a href="../reference/pic.html">pic()</a></code> is called with <code>relax = FALSE</code>, so
-the reported coefficients still carry the shrinkage induced by the
-penalty. This is particularly pronounced with the LASSO
+<p>A word of caution when interpreting the predictive metrics: the
+coefficients returned by <code><a href="../reference/pic.html">pic()</a></code> carry the shrinkage induced
+by the penalty. This is particularly pronounced with the LASSO
 (<code>penalty = "lasso"</code>), whose bias on non-zero coefficients
 does not vanish even as the signal grows. SCAD and MCP reduce this
 effect but the residual bias is still non-negligible for moderate
 signals.</p>
 <p>When the goal is prediction quality, the safest pattern is to refit
-on the selected support without penalization. Two ways:</p>
-<ul>
-<li><p>Call <code><a href="../reference/pic.html">pic()</a></code> with <code>relax = TRUE</code>. After the
-regularized path converges, an unpenalized refit is run on the selected
-variables, yielding debiased coefficients that are immediately usable
-for prediction.</p></li>
-<li><p>Manually re-fit on the subset <code>X[, fit$selected]</code> with
-the estimator of your choice.</p></li>
-</ul>
+on the selected support without penalization, with the estimator of your
+choice, for instance <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> or <code><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm()</a></code>:</p>
 <div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_relax</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, relax <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/assess.html">assess</a></span><span class="op">(</span><span class="va">fit_relax</span>, newx <span class="op">=</span> <span class="va">X</span>, newy <span class="op">=</span> <span class="va">y</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">##  metric     value</span></span>
-<span><span class="co">##     MSE 0.7631608</span></span>
-<span><span class="co">##     MAE 0.6993721</span></span>
-<span><span class="co">##      R2 0.8284080</span></span></code></pre>
+<code class="sourceCode R"><span><span class="va">refit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">X</span><span class="op">[</span>, <span class="va">fit</span><span class="op">$</span><span class="va">selected</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals</a></span><span class="op">(</span><span class="va">refit</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 0.7631606</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="support-recovery-diagnostics">Support-recovery diagnostics<a class="anchor" aria-label="anchor" href="#support-recovery-diagnostics"></a>
@@ -738,7 +745,8 @@ averaged over the replications.</p>
 configurations. Several penalties can also be requested in a single call
 (<code>penalty = c("lasso", "scad", "mcp")</code>). Parallel execution
 over the <span class="math inline">m</span> replications is enabled with
-<code>parallel = TRUE</code>.</p>
+<code>parallel = TRUE</code> (this requires the <code>future</code> and
+<code>future.apply</code> packages).</p>
 <div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/phase_transition.html">phase_transition</a></span><span class="op">(</span></span>
 <span>  n        <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">50</span>, <span class="fl">100</span><span class="op">)</span>,</span>
@@ -804,7 +812,7 @@ error, which is not the same objective as recovering the true support;
 recovery</em>, and therefore tends to recover the active set more
 accurately. These two targets are fundamentally different - and
 <code>picreg</code>’s answer is closer to the one practitioners actually
-want when they ask for “feature selection”</p>
+want when they ask for “feature selection”.</p>
 <div class="section level3">
 <h3 id="support-recovery-on-a-small-gaussian-benchmark">Support recovery on a small Gaussian benchmark<a class="anchor" aria-label="anchor" href="#support-recovery-on-a-small-gaussian-benchmark"></a>
 </h3>
@@ -878,9 +886,9 @@ is cheap and the whole pipeline finishes very fast.</p></li>
 <code>"mc_exact"</code> Monte Carlo dominates the runtime. In that
 regime, switching to <code>"mc_gaussian"</code> or
 <code>"analytical"</code> gives essentially the same <span class="math inline">\widehat{\lambda}</span> at a tiny fraction of the
-cost (see the <em>Asymptotic behavior of the selector</em> section), so
-<code>picreg</code> remains very competitive - often faster than a full
-CV pass.</p></li>
+cost (see the <em>Asymptotic behavior of the pivotal statistic</em>
+section), so <code>picreg</code> remains very competitive - often faster
+than a full CV pass.</p></li>
 <li><p><strong>For Gaussian designs</strong>, <code>glmnet</code> is
 very fast. Its Fortran coordinate-descent backend on the squared loss is
 extremely well optimized. <code>picreg</code> runs FISTA on the

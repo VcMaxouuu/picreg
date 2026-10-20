@@ -1,6 +1,6 @@
 # Pretty-print a pic family descriptor.
 
-Three-line summary showing the family name and its (g, phi) link pair.
+One-line summary showing the family name and its (g, phi) pair.
 
 ## Usage
 

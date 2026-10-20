@@ -11,7 +11,7 @@ when the true active set is known."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -78,8 +78,10 @@ evaluated, with the same columns as the training data.</p></dd>
 
 <dt id="arg-newy">newy<a class="anchor" aria-label="anchor" href="#arg-newy"></a></dt>
 <dd><p>Response on the new observations. Numeric vector for
-all families except Cox; for Cox, a two-column matrix
-<code>(time, event)</code> matching the training response format.</p></dd>
+all families except Cox (logical or factor values are accepted for
+binomial fits and mapped to <code>0</code>/<code>1</code> as at training); for Cox, a
+two-column matrix <code>(time, event)</code> matching the training response
+format.</p></dd>
 
 
 <dt id="arg-true-features">true_features<a class="anchor" aria-label="anchor" href="#arg-true-features"></a></dt>
@@ -109,8 +111,8 @@ and <code>value</code> (numeric).</p>
 
 <dt><code>"gumbel"</code></dt>
 <dd><p>MSE, MAE, deviance computed from the per-sample
-negative log-likelihood with a moment estimate of the scale
-parameter \(\hat\sigma = \mathrm{sd}(y - \hat\eta)\sqrt{6}/\pi\).</p></dd>
+negative log-likelihood with the scale parameter profiled at its
+maximum-likelihood estimate.</p></dd>
 
 <dt><code>"cox"</code></dt>
 <dd><p>Harrell's C-index and the Breslow partial
@@ -133,9 +135,9 @@ the fit carries column names.</p>
 <span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="pic.html">pic</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family <span class="op">=</span> <span class="st">"gaussian"</span>, penalty <span class="op">=</span> <span class="st">"scad"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">assess</span><span class="op">(</span><span class="va">fit</span>, <span class="va">X</span>, <span class="va">y</span>, true_features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"gene_"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          metric     value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>             MSE 1.0551556</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>             MAE 0.8266425</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>              R2 0.7627548</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>             MSE 1.0551423</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>             MAE 0.8266374</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              R2 0.7627578</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  exact_recovery 1.0000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             tpr 1.0000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             fdr 0.0000000</span>

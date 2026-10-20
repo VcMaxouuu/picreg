@@ -4,18 +4,18 @@ name - used by the dispatchers to route to the C++ implementation.
 g    - mean-function link (object with name and callable fn).
 g$fn(eta) is applied at predict time to obtain the mean
 response.
-phi  - variance-stabilizing transform (object with name).
-Purely informational on the R side; the actual stabilization
-happens inside the C++ math.
+phi  - output transform applied to the base loss (object with
+name). Purely informational on the R side; the actual
+transform is applied inside the C++ math.
 
 "><meta property="og:description" content="Each family is a thin descriptor carrying:
 name - used by the dispatchers to route to the C++ implementation.
 g    - mean-function link (object with name and callable fn).
 g$fn(eta) is applied at predict time to obtain the mean
 response.
-phi  - variance-stabilizing transform (object with name).
-Purely informational on the R side; the actual stabilization
-happens inside the C++ math.
+phi  - output transform applied to the base loss (object with
+name). Purely informational on the R side; the actual
+transform is applied inside the C++ math.
 
 "></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -25,7 +25,7 @@ happens inside the C++ math.
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,9 +64,9 @@ happens inside the C++ math.
 <li><p><code>g</code>    - mean-function link (object with <code>name</code> and callable <code>fn</code>).
 <code>g$fn(eta)</code> is applied at predict time to obtain the mean
 response.</p></li>
-<li><p><code>phi</code>  - variance-stabilizing transform (object with <code>name</code>).
-Purely informational on the R side; the actual stabilization
-happens inside the C++ math.</p></li>
+<li><p><code>phi</code>  - output transform applied to the base loss (object with
+<code>name</code>). Purely informational on the R side; the actual
+transform is applied inside the C++ math.</p></li>
 </ul></div>
 
 

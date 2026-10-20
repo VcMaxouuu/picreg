@@ -21,10 +21,10 @@ phase_transition(
   beta_value = 3,
   lambda_method = "mc_exact",
   lambda_alpha = 0.05,
-  lambda_n_simu = 5000L,
+  lambda_n_simu = 2000L,
   verbose = FALSE,
   parallel = FALSE,
-  workers = parallel::detectCores() - 1L
+  workers = NULL
 )
 ```
 
@@ -75,7 +75,7 @@ phase_transition(
 
 - lambda_n_simu:
 
-  Monte Carlo size for the PDB selector.
+  Monte Carlo size for the PDB selector. Default 2000.
 
 - verbose:
 
@@ -86,31 +86,37 @@ phase_transition(
 
   Logical; if `TRUE`, distribute the `m` Monte Carlo replications of
   each `(n, p, penalty, s)` cell across multiple R processes via the
-  `future` framework
-  ([`future::multisession`](https://future.futureverse.org/reference/multisession.html)
-  plan).
+  `future` framework (a
+  [`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+  plan, the caller's plan being restored on exit). Requires the future
+  and future.apply packages.
 
 - workers:
 
   Integer; number of background R processes to use when
-  `parallel = TRUE`. Ignored otherwise.
+  `parallel = TRUE`. Default `NULL` uses all available cores but one
+  (`future::availableCores(omit = 1)`, which honors the limits set by
+  CRAN or a scheduler). Ignored otherwise.
 
 ## Value
 
 An object of class `c("pic.phase_transition", "pic.diagnostic")`.
 
-- s_grid:
+- results:
 
-  `0:s_max`.
+  Long-format `data.frame` with one row per `(n, p, penalty, s)` and
+  columns `n`, `p`, `penalty`, `s`, `exact_recovery`, `tpr`, `fdr`,
+  `n_failed`.
 
 - exact_recovery, tpr, fdr:
 
-  Matrices of shape `(length(n) * length(penalty), s_max + 1)` - one row
-  per `(n, p, penalty)` curve, one column per sparsity level
+  Wide-format `data.frame`s with one row per `(n, p, penalty)` curve
+  (columns `n`, `p`, `penalty`) and one column `s_<k>` per sparsity
+  level.
 
-- curve_n, curve_p, curve_penalty:
+- s_grid:
 
-  Curve descriptors aligned with the rows of the metric matrices.
+  `0:s_max`.
 
 - config:
 
@@ -142,6 +148,10 @@ three metrics are stored:
 
   \\\left\|\hat{S}\setminus S\right\| / \max{(\|\hat{S}\|, 1)}\\ - false
   discovery rate.
+
+Fits that fail are not counted as failed recoveries: they are excluded
+from the averages, counted in the `n_failed` column of `results`, and
+reported in a single warning.
 
 ### Details on data sampling
 
@@ -193,8 +203,7 @@ for visualization.
 # \donttest{
 pt <- phase_transition(n = 50, p = 100, type = "gaussian",
                        s_max = 8, m = 20,
-                       penalty = c("lasso", "scad"), 
-                       parallel = TRUE)
+                       penalty = c("lasso", "scad"))
 plot(pt)
 
 # }

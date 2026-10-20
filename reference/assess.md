@@ -31,8 +31,9 @@ assess(object, newx, newy, true_features = NULL, ...)
 - newy:
 
   Response on the new observations. Numeric vector for all families
-  except Cox; for Cox, a two-column matrix `(time, event)` matching the
-  training response format.
+  except Cox (logical or factor values are accepted for binomial fits
+  and mapped to `0`/`1` as at training); for Cox, a two-column matrix
+  `(time, event)` matching the training response format.
 
 - true_features:
 
@@ -68,8 +69,8 @@ The metrics depend on the family:
 - `"gumbel"`:
 
   MSE, MAE, deviance computed from the per-sample negative
-  log-likelihood with a moment estimate of the scale parameter
-  \\\hat\sigma = \mathrm{sd}(y - \hat\eta)\sqrt{6}/\pi\\.
+  log-likelihood with the scale parameter profiled at its
+  maximum-likelihood estimate.
 
 - `"cox"`:
 
@@ -91,9 +92,9 @@ y <- QuickStartExample$y
 fit <- pic(X, y, family = "gaussian", penalty = "scad")
 assess(fit, X, y, true_features = paste0("gene_", 1:5))
 #>          metric     value
-#>             MSE 1.0551556
-#>             MAE 0.8266425
-#>              R2 0.7627548
+#>             MSE 1.0551423
+#>             MAE 0.8266374
+#>              R2 0.7627578
 #>  exact_recovery 1.0000000
 #>             tpr 1.0000000
 #>             fdr 0.0000000

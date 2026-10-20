@@ -15,7 +15,7 @@ supplied, one result is produced for each (n, p, penalty) combination."></head><
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -69,10 +69,10 @@ supplied, one result is produced for each <code>(n, p, penalty)</code> combinati
 <span>  beta_value <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  lambda_method <span class="op">=</span> <span class="st">"mc_exact"</span>,</span>
 <span>  lambda_alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
-<span>  lambda_n_simu <span class="op">=</span> <span class="fl">5000L</span>,</span>
+<span>  lambda_n_simu <span class="op">=</span> <span class="fl">2000L</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  workers <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1L</span></span>
+<span>  workers <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -119,7 +119,7 @@ the response. The sign is fixed to <code>+</code>.</p></dd>
 
 
 <dt id="arg-lambda-n-simu">lambda_n_simu<a class="anchor" aria-label="anchor" href="#arg-lambda-n-simu"></a></dt>
-<dd><p>Monte Carlo size for the PDB selector.</p></dd>
+<dd><p>Monte Carlo size for the PDB selector. Default 2000.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -129,26 +129,33 @@ the response. The sign is fixed to <code>+</code>.</p></dd>
 <dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, distribute the <code>m</code> Monte Carlo
 replications of each <code>(n, p, penalty, s)</code> cell across multiple R
-processes via the <code>future</code> framework (<code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> plan).</p></dd>
+processes via the <code>future</code> framework (a <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> plan,
+the caller's plan being restored on exit). Requires the <span class="pkg">future</span>
+and <span class="pkg">future.apply</span> packages.</p></dd>
 
 
 <dt id="arg-workers">workers<a class="anchor" aria-label="anchor" href="#arg-workers"></a></dt>
 <dd><p>Integer; number of background R processes to use when
-<code>parallel = TRUE</code>. Ignored otherwise.</p></dd>
+<code>parallel = TRUE</code>. Default <code>NULL</code> uses all available cores but one
+(<code>future::availableCores(omit = 1)</code>, which honors the limits set by
+CRAN or a scheduler). Ignored otherwise.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>c("pic.phase_transition", "pic.diagnostic")</code>.</p>
-<dl><dt>s_grid</dt>
-<dd><p><code>0:s_max</code>.</p></dd>
+<dl><dt>results</dt>
+<dd><p>Long-format <code>data.frame</code> with one row per
+<code>(n, p, penalty, s)</code> and columns <code>n</code>, <code>p</code>, <code>penalty</code>, <code>s</code>,
+<code>exact_recovery</code>, <code>tpr</code>, <code>fdr</code>, <code>n_failed</code>.</p></dd>
 
 <dt>exact_recovery, tpr, fdr</dt>
-<dd><p>Matrices of shape <code>(length(n) * length(penalty), s_max + 1)</code> -
-one row per <code>(n, p, penalty)</code> curve, one column per sparsity level</p></dd>
+<dd><p>Wide-format <code>data.frame</code>s with one row
+per <code>(n, p, penalty)</code> curve (columns <code>n</code>, <code>p</code>, <code>penalty</code>) and one
+column <code>s_&lt;k&gt;</code> per sparsity level.</p></dd>
 
-<dt>curve_n, curve_p, curve_penalty</dt>
-<dd><p>Curve descriptors aligned with the rows of the metric matrices.</p></dd>
+<dt>s_grid</dt>
+<dd><p><code>0:s_max</code>.</p></dd>
 
 <dt>config</dt>
 <dd><p>A list of all configuration arguments for downstream plotting / reporting.</p></dd>
@@ -174,7 +181,9 @@ compared to the truth and three metrics are stored:</p>
 <dd><p>\(\left|\hat{S}\setminus S\right| / \max{(|\hat{S}|, 1)}\) - false discovery rate.</p></dd>
 
 
-</dl><div class="section">
+</dl><p>Fits that fail are not counted as failed recoveries: they are excluded
+from the averages, counted in the <code>n_failed</code> column of <code>results</code>, and
+reported in a single warning.</p><div class="section">
 <h3 id="details-on-data-sampling">Details on data sampling<a class="anchor" aria-label="anchor" href="#details-on-data-sampling"></a></h3>
 
 
@@ -224,8 +233,7 @@ matrix \(\bigl(\min(T_i, C_i),\, \mathbf{1}\{T_i \le C_i\}\bigr)\).</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="va">pt</span> <span class="op">&lt;-</span> <span class="fu">phase_transition</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">50</span>, p <span class="op">=</span> <span class="fl">100</span>, type <span class="op">=</span> <span class="st">"gaussian"</span>,</span></span>
 <span class="r-in"><span>                       s_max <span class="op">=</span> <span class="fl">8</span>, m <span class="op">=</span> <span class="fl">20</span>,</span></span>
-<span class="r-in"><span>                       penalty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lasso"</span>, <span class="st">"scad"</span><span class="op">)</span>, </span></span>
-<span class="r-in"><span>                       parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>                       penalty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lasso"</span>, <span class="st">"scad"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="phase_transition-1.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>

@@ -12,7 +12,7 @@ cross-validation and achieves more accurate support recovery by better
 identifying the true non-zero coefficients. The package fits the
 resulting estimators across six response distributions - Gaussian,
 binomial, Poisson, exponential, Gumbel, and Cox - combined with three
-sparsity-inducing penalties; \ell_1 (LASSO), the Smoothly Clipped
+sparsity-inducing penalties: \ell_1 (LASSO), the Smoothly Clipped
 Absolute Deviation (SCAD), and Minimax Concave Penalty (MCP).
 
 Given data \mathcal{D} = (X, y), where X \in \mathbb{R}^{n \times p}
@@ -28,12 +28,17 @@ the Pivotal Information Criterion (PIC) by solving
 \lambda\_\alpha^{\mathrm{PDB}}\\ P(\boldsymbol{\beta})\right\\, \qquad
 \boldsymbol{\theta} = g\bigl(\beta_0\mathbf{1} +
 X\boldsymbol{\beta}\bigr), where \lambda\_\alpha^{\mathrm{PDB}} is the
-pre-fixed for the parameter \lambda chosen as the upper \alpha-quantile
-of a statistic \Lambda made pivotal with respect to unknown parameters
-\sigma,\\ \beta_0 thanks to the distribution-specific pair (\phi,\\ g).
+pre-fixed *pivotal detection boundary* for the parameter \lambda chosen
+as the upper \alpha-quantile of a statistic \Lambda made pivotal with
+respect to unknown parameters \sigma,\\ \beta_0 thanks to the
+distribution-specific pair (\phi,\\ g).
 
-Internally, `picreg` uses FISTA (Fast Iterative Soft-Thresholding
-Algorithm) as the optimization scheme.
+Internally, `picreg` uses FISTA (Fast Iterative Shrinkage-Thresholding
+Algorithm) as the optimization scheme: a warm-started \ell_1 path runs
+from the smallest \lambda that sets all coefficients to zero down to
+\lambda\_\alpha^{\mathrm{PDB}}, and for SCAD and MCP a final stage
+minimizes the criterion with the target penalty, starting from the
+\ell_1 solution.
 
 ## Installation
 
@@ -171,8 +176,9 @@ fit$penalty
 When `X` is supplied as a data frame, or as a matrix carrying column
 names, `picreg` uses them throughout the output. As shown above,
 `fit$selected` returns the **names** of the selected variables rather
-than their integer indices. Bare matrices fall back to the default
-`V1, ..., Vp` naming.
+than their integer indices. For bare matrices, `fit$selected` holds
+integer column indices and [`coef()`](https://rdrr.io/r/stats/coef.html)
+falls back to the default `V1, ..., Vp` naming.
 
 ### Coefficients
 
@@ -218,10 +224,11 @@ primary argument is `newx`, a matrix of values for `X` at which
 predictions are desired. Two types are universally available: `"link"`
 (the linear predictor X\boldsymbol{\beta} + \beta_0) and `"response"`
 (the mean response g(\eta)). In the Gaussian case of course (since g is
-the identity), both types gives the same outputs. Binomial fits
+the identity), both types give the same outputs. Binomial fits
 additionally accept `type = "class"` for hard label prediction, and Cox
 fits accept `type = "survival"` for subject-specific survival curves
-(see the Cox section below).
+(see the Cox section below). For Cox fits, `"response"` returns the
+relative risk \exp(\eta), as in `glmnet`.
 
 ``` r
 
@@ -280,6 +287,15 @@ quantile depends only on X, the underlying distribution `family`, and
 the tuning-free parameter \lambda\_\alpha^{\mathrm{PDB}} can be
 determined a priori.
 
+Since \lambda\_\alpha^{\mathrm{PDB}} is estimated by Monte Carlo (see
+below), two calls may return slightly different values. Passing
+`lambda_seed` to
+[`pic()`](https://vcmaxouuu.github.io/picreg/reference/pic.md) (or
+`seed` to
+[`lambda_pdb()`](https://vcmaxouuu.github.io/picreg/reference/lambda_pdb.md))
+makes the calibration reproducible; only the calibration is seeded, and
+the global random stream is left unchanged.
+
 #### Calculation methods
 
 The quantile is calculated via one of three methods, set through the
@@ -287,7 +303,7 @@ The quantile is calculated via one of three methods, set through the
 [`pic()`](https://vcmaxouuu.github.io/picreg/reference/pic.md):
 
 - **`"mc_exact"` (default).** Distribution/family-aware Monte Carlo: for
-  each of `lambda_n_simu` draw, a null response is sampled, the
+  each of `lambda_n_simu` draws, a null response is sampled, the
   distribution-specific gradient is evaluated at \boldsymbol{\beta} =
   \mathbf{0}, and its supremum norm is recorded. The empirical
   (1-\alpha) quantile of the simulated norms is returned.
@@ -355,13 +371,17 @@ dataset - can be supplied directly via the `lambda` argument of
 [`pic()`](https://vcmaxouuu.github.io/picreg/reference/pic.md). The PDB
 calibration is then skipped. This is particularly useful when comparing
 the three penalties (LASSO, SCAD, MCP) on the same problem, since the
-PDB choice of \lambda does not depend on the penalty itself.
+PDB choice of \lambda does not depend on the penalty itself. Passing the
+calibration object `fit$lambda_pdb` rather than the number `fit$lambda`
+also keeps it on the new fits, so that
+[`pdb_summary()`](https://vcmaxouuu.github.io/picreg/reference/pdb_summary.md)
+and `plot(fit$lambda_pdb)` remain available.
 
 ``` r
 
-fit_lasso <- pic(X, y, penalty = "lasso", lambda = fit$lambda)
-fit_scad  <- pic(X, y, penalty = "scad",  lambda = fit$lambda)
-fit_mcp   <- pic(X, y, penalty = "mcp",   lambda = fit$lambda)
+fit_lasso <- pic(X, y, penalty = "lasso", lambda = fit$lambda_pdb)
+fit_scad  <- pic(X, y, penalty = "scad",  lambda = fit$lambda_pdb)
+fit_mcp   <- pic(X, y, penalty = "mcp",   lambda = fit$lambda_pdb)
 
 data.frame(
   penalty = c("lasso", "scad", "mcp"),
@@ -391,7 +411,7 @@ objective function for the Gaussian distribution uses the MSE for l_n
 and \phi(\cdot) = \sqrt{\cdot}, g(\cdot) = \mathrm{Id} as
 transformations, resulting in the square-root LASSO objective
 \min\_{\beta_0,\\\boldsymbol{\beta}}\left\\\sqrt{\frac1n\sum\_{i=1}^n\left(y_i-(\beta_0+\mathbf
-x_i^T\boldsymbol\beta\right)^2} + \lambda\_\alpha^{\mathrm{PDB}}\\
+x_i^T\boldsymbol\beta)\right)^2} + \lambda\_\alpha^{\mathrm{PDB}}\\
 P(\boldsymbol{\beta})\right\\. This is the canonical pivotal alternative
 to the standard squared loss: it makes the gradient at
 \boldsymbol{\beta} = 0 scale-free, so the PDB threshold does not require
@@ -401,18 +421,19 @@ an estimate of the noise standard deviation.
 
 `family = "binomial"` is used for logistic regression when the responses
 y_i \in \\0, 1\\ are binary. In this case, `pic` requires `y` to be a
-vector containing only 0 and 1 values. Any other format or values in `y`
-will return an error. `picreg` uses a variance-stabilized transformation
-of the Bernoulli likelihood. With \phi(\cdot) = \mathrm{Id} and the
-logistic link \theta_i = g(\eta_i) = (1 + e^{-\eta_i})^{-1},
-`pic(family = "binomial")` minimizes \min\_{\beta_0,
-\boldsymbol\beta}\left\\ \frac{1}{n}\sum\_{i=1}^{n}\left( 2 y_i
-\sqrt{\tfrac{1 - \theta_i}{\theta_i}} + 2 (1 - y_i)
-\sqrt{\tfrac{\theta_i}{1 - \theta_i}} \right)+\lambda\_\alpha^{\rm
-PBD}P(\boldsymbol\beta)\right\\, \qquad \theta_i =
-\frac{1}{1+\exp(-(\beta_0+\mathbf x_i^T\boldsymbol\beta))} The classical
-logistic link is preserved; only the loss itself is modified to obtain a
-pivotal gradient at the null.
+vector containing only 0 and 1 values, a logical vector (`TRUE` mapped
+to 1), or a two-level factor (second level mapped to 1, as in `glmnet`).
+Any other format or values in `y` will return an error. `picreg` uses a
+variance-stabilized transformation of the Bernoulli likelihood. With
+\phi(\cdot) = \mathrm{Id} and the logistic link \theta_i = g(\eta_i) =
+(1 + e^{-\eta_i})^{-1}, `pic(family = "binomial")` minimizes
+\min\_{\beta_0, \boldsymbol\beta}\left\\
+\frac{1}{n}\sum\_{i=1}^{n}\left( 2 y_i \sqrt{\tfrac{1 -
+\theta_i}{\theta_i}} + 2 (1 - y_i) \sqrt{\tfrac{\theta_i}{1 - \theta_i}}
+\right)+\lambda\_\alpha^{\rm PDB}P(\boldsymbol\beta)\right\\, \qquad
+\theta_i = \frac{1}{1+\exp(-(\beta_0+\mathbf x_i^T\boldsymbol\beta))}
+The classical logistic link is preserved; only the loss itself is
+modified to obtain a pivotal gradient at the null.
 
 ``` r
 
@@ -459,19 +480,19 @@ y_i}{\sqrt{\theta_i}} + 2 \sqrt{\theta_i} \right)+\lambda\_\alpha^{\rm
 PDB}P(\boldsymbol\beta)\right\\, \qquad \theta_i = \exp(\beta_0+\mathbf
 x_i^T\boldsymbol\beta). The canonical log link is kept unchanged; the
 pivotal property is obtained through the loss rather than through the
-link. `pic` requires `y` to be a vector containing only non negative
+link. `pic` requires `y` to be a vector containing only non-negative
 values.
 
 ### Exponential
 
 The standard Exponential negative log-likelihood is used directly, no
-transformation are needed. With \phi(\cdot) = \mathrm{Id} and \theta_i =
+transformation is needed. With \phi(\cdot) = \mathrm{Id} and \theta_i =
 g(\eta_i) = e^{\eta_i}, `pic(family = "exponential")` minimizes
 \min\_{\beta_0, \boldsymbol\beta}\left\\
 \frac{1}{n}\sum\_{i=1}^{n}\left( \log{\theta_i} + \frac{y_i}{\theta_i}
-\right)+\lambda\_\alpha^{\rm PDB}\right\\, \qquad \theta_i =
-\exp(\beta_0+\mathbf x_i^T\boldsymbol\beta). Again, `pic` requires `y`
-to be a vector containing only non negative values.
+\right)+\lambda\_\alpha^{\rm PDB}P(\boldsymbol\beta)\right\\, \qquad
+\theta_i = \exp(\beta_0+\mathbf x_i^T\boldsymbol\beta). Again, `pic`
+requires `y` to be a vector containing only non-negative values.
 
 ### Gumbel
 
@@ -480,15 +501,14 @@ noise. The base log-likelihood is l_n(\boldsymbol{\theta}, \sigma) =
 \log(\sigma) + \frac{1}{n}\sum\_{i=1}^{n} \bigl(z_i + e^{-z_i}\bigr),
 \qquad z_i = \frac{y_i - \theta_i}{\sigma}. With \phi(\cdot) =
 \exp(\cdot) and the identity link \theta_i = g(\eta_i) = \eta_i, the
-optimization objective is \phi\bigl(\ell_n(\boldsymbol{\theta}, \sigma;
-\mathcal{D})\bigr) = \exp\bigl(\ell_n(\boldsymbol{\theta},
-\sigma)\bigr). The scale parameter \sigma is re-estimated internally by
-maximum likelihood at every iteration; the user does not pass it
-explicitly.
+optimization objective is \phi\bigl(l_n(\boldsymbol{\theta}, \sigma;
+\mathcal{D})\bigr) = \exp\bigl(l_n(\boldsymbol{\theta}, \sigma)\bigr).
+The scale parameter \sigma is re-estimated internally by maximum
+likelihood at every iteration; the user does not pass it explicitly.
 
 ### Cox
 
-The Cox proportional-hazard model is the survival counterpart of the
+The Cox proportional-hazards model is the survival counterpart of the
 other GLMs. The response `y` must be a two-column matrix (t_i, \delta_i)
 of event times and event indicators (\delta_i = 1 if event, 0 if
 censored). With \phi(\cdot) = \sqrt{\cdot} and \theta_i = g(\eta_i) =
@@ -647,9 +667,9 @@ assess(fit_cox, newx = CoxExample$X, newy = CoxExample$y)
 
 ### A note on bias and refitting
 
-A word of caution when interpreting the predictive metrics: by default
-[`pic()`](https://vcmaxouuu.github.io/picreg/reference/pic.md) is called
-with `relax = FALSE`, so the reported coefficients still carry the
+A word of caution when interpreting the predictive metrics: the
+coefficients returned by
+[`pic()`](https://vcmaxouuu.github.io/picreg/reference/pic.md) carry the
 shrinkage induced by the penalty. This is particularly pronounced with
 the LASSO (`penalty = "lasso"`), whose bias on non-zero coefficients
 does not vanish even as the signal grows. SCAD and MCP reduce this
@@ -657,26 +677,17 @@ effect but the residual bias is still non-negligible for moderate
 signals.
 
 When the goal is prediction quality, the safest pattern is to refit on
-the selected support without penalization. Two ways:
-
-- Call [`pic()`](https://vcmaxouuu.github.io/picreg/reference/pic.md)
-  with `relax = TRUE`. After the regularized path converges, an
-  unpenalized refit is run on the selected variables, yielding debiased
-  coefficients that are immediately usable for prediction.
-
-- Manually re-fit on the subset `X[, fit$selected]` with the estimator
-  of your choice.
+the selected support without penalization, with the estimator of your
+choice, for instance [`lm()`](https://rdrr.io/r/stats/lm.html) or
+[`glm()`](https://rdrr.io/r/stats/glm.html):
 
 ``` r
 
-fit_relax <- pic(X, y, relax = TRUE)
-assess(fit_relax, newx = X, newy = y)
+refit <- lm(y ~ X[, fit$selected, drop = FALSE])
+mean(residuals(refit)^2)
 ```
 
-    ##  metric     value
-    ##     MSE 0.7631608
-    ##     MAE 0.6993721
-    ##      R2 0.8284080
+    ## [1] 0.7631606
 
 ### Support-recovery diagnostics
 
@@ -726,7 +737,8 @@ the replications.
 The example below uses a small Monte Carlo size and two configurations.
 Several penalties can also be requested in a single call
 (`penalty = c("lasso", "scad", "mcp")`). Parallel execution over the m
-replications is enabled with `parallel = TRUE`.
+replications is enabled with `parallel = TRUE` (this requires the
+`future` and `future.apply` packages).
 
 ``` r
 
@@ -800,7 +812,7 @@ not the same objective as recovering the true support; `picreg` instead
 calibrates \lambda specifically for *support recovery*, and therefore
 tends to recover the active set more accurately. These two targets are
 fundamentally different - and `picreg`’s answer is closer to the one
-practitioners actually want when they ask for “feature selection”
+practitioners actually want when they ask for “feature selection”.
 
 ### Support recovery on a small Gaussian benchmark
 
@@ -880,9 +892,9 @@ n:
 - When n becomes very large, the `"mc_exact"` Monte Carlo dominates the
   runtime. In that regime, switching to `"mc_gaussian"` or
   `"analytical"` gives essentially the same \widehat{\lambda} at a tiny
-  fraction of the cost (see the *Asymptotic behavior of the selector*
-  section), so `picreg` remains very competitive - often faster than a
-  full CV pass.
+  fraction of the cost (see the *Asymptotic behavior of the pivotal
+  statistic* section), so `picreg` remains very competitive - often
+  faster than a full CV pass.
 
 - **For Gaussian designs**, `glmnet` is very fast. Its Fortran
   coordinate-descent backend on the squared loss is extremely well

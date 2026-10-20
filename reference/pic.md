@@ -17,12 +17,12 @@ pic(
   standardize = TRUE,
   intercept = TRUE,
   lambda_method = c("mc_exact", "mc_gaussian", "analytical"),
-  relax = FALSE,
   mcp_gamma = 3,
   scad_a = 3.7,
   lambda = NULL,
   lambda_alpha = 0.05,
   lambda_n_simu = 2000,
+  lambda_seed = NULL,
   tol = 1e-05,
   path_length = 10L,
   maxit = 1000
@@ -42,7 +42,8 @@ pic(
 
   Response variable with length `n`. For Gaussian and Gumbel models, `y`
   must be numeric. For Binomial models, `y` must contain only `0` and
-  `1`. For Poisson and Exponential models, `y` must be non-negative. For
+  `1`, or be logical (`TRUE` = 1) or a two-level factor (second level =
+  1). For Poisson and Exponential models, `y` must be non-negative. For
   `family = "cox"`, `y` must be a two-column numeric matrix
   `(time, event)`, where `time` is non-negative and `event` is coded as
   `0` or `1`.
@@ -80,7 +81,7 @@ pic(
 - intercept:
 
   Whether to fit an unpenalized intercept. Forced to `FALSE` for the Cox
-  family. We assume the data has been centered if intercept = FALSE.
+  family. When `intercept = FALSE`, the data are assumed to be centered.
 
 - lambda_method:
 
@@ -88,14 +89,9 @@ pic(
   [`lambda_pdb()`](https://vcmaxouuu.github.io/picreg/reference/lambda_pdb.md)
   for details. The default `"mc_exact"` is a safe choice for small to
   moderate designs; for very large \\n\\ or \\p\\, `"mc_gaussian"`
-  matches `"mc_exact"` closely at a fraction of the cost (it amortises
-  only one BLAS \\\tt gemm\\, no family-specific residual draws), and
+  matches `"mc_exact"` closely at a fraction of the cost (it skips the
+  family-specific null draws and residual evaluations), and
   `"analytical"` is closed-form.
-
-- relax:
-
-  If `TRUE`, run an unpenalized refit on the selected support after the
-  regularization path (debiasing).
 
 - mcp_gamma:
 
@@ -107,9 +103,12 @@ pic(
 
 - lambda:
 
-  Optional user-supplied regularization parameter. When `NULL`,
+  Optional regularization parameter. When `NULL`,
   [`lambda_pdb()`](https://vcmaxouuu.github.io/picreg/reference/lambda_pdb.md)
-  is used to select it automatically. Providing `lambda` avoids
+  is used to select it automatically. Either a single non-negative
+  number, or a `"pic.lambda_pdb"` object (typically `fit$lambda_pdb`
+  from a previous fit on the same `X` and family), whose calibration is
+  then reused and kept on the new fit. Providing `lambda` avoids
   recomputing the PDB calibration, which is useful for example when
   fitting several penalties (`"lasso"`, `"scad"`, `"mcp"`) on the same
   dataset, since the PDB choice of \\\lambda\\ does not depend on the
@@ -125,6 +124,12 @@ pic(
   Number of Monte Carlo draws for PDB. See
   [`lambda_pdb()`](https://vcmaxouuu.github.io/picreg/reference/lambda_pdb.md).
 
+- lambda_seed:
+
+  Optional seed for the Monte Carlo PDB calibration, for a reproducible
+  \\\lambda\\. Only the calibration is seeded; the global random stream
+  is left unchanged. Default `NULL` (no seeding).
+
 - tol:
 
   FISTA convergence tolerance at the final path step.
@@ -136,16 +141,23 @@ pic(
 
 - maxit:
 
-  Maximum number of iterations for FISTA if convergence is not yet
-  reached.
+  Maximum number of FISTA iterations per path step. A warning is issued
+  if the final step does not converge within `maxit`.
 
 ## Value
 
 An object of class `c("pic.<family>", "pic")`.
 
+- call:
+
+  The matched call.
+
 - beta:
 
-  Fitted coefficients (length `p`).
+  Fitted coefficients (length `p`), on the standardized scale when
+  `standardize = TRUE`. Use
+  [`coef.pic()`](https://vcmaxouuu.github.io/picreg/reference/coef.pic.md)
+  for the original scale of `X`.
 
 - intercept:
 
@@ -157,7 +169,8 @@ An object of class `c("pic.<family>", "pic")`.
 
 - selected:
 
-  Indices of the nonzero coefficients.
+  Names of the selected variables when `X` has column names, otherwise
+  their integer column indices.
 
 - lambda:
 
@@ -173,9 +186,9 @@ An object of class `c("pic.<family>", "pic")`.
 
 - lambda_pdb:
 
-  Result from
+  The
   [`lambda_pdb()`](https://vcmaxouuu.github.io/picreg/reference/lambda_pdb.md)
-  if \\\lambda\\ is not user-supplied.
+  calibration, or `NULL` when a numeric \\\lambda\\ is supplied.
 
 - n_samples:
 
@@ -184,6 +197,14 @@ An object of class `c("pic.<family>", "pic")`.
 - n_features:
 
   The number of variables in the training set.
+
+- n_iter:
+
+  Total number of FISTA iterations over the path.
+
+- converged:
+
+  Whether the final FISTA step reached `tol` within `maxit` iterations.
 
 For `family = "cox"`, the fit additionally carries:
 
@@ -205,7 +226,7 @@ For `family = "cox"`, the fit additionally carries:
 
 ## Details
 
-Minimises the objective function \$\$\hat\beta = \arg\min\_\beta\\
+Minimizes the objective function \$\$\hat\beta = \arg\min\_\beta\\
 L(\beta) \\+\\ \lambda\_\alpha^{\rm PDB}\\\mathrm{pen}(\beta)
 \quad\text{with}\quad L(\beta) =
 \phi\\\left(\ell_n\\\left(g(\beta)\right)\right),\$\$ where the
@@ -220,8 +241,11 @@ identification of the true non-zero coefficients. Here, \\\phi\\ and
 \\g\\ are family-specific transformations chosen so that the gradient at
 the null has a distribution free of the nuisance parameter, which is
 precisely what makes the use of \\\lambda^{\rm PDB}\_\alpha\\ valid.
-Optimization is performed using a warm-started FISTA regularization
-path.
+Optimization follows Section 3.3 of the paper: a warm-started FISTA path
+with the \\\ell_1\\ penalty runs from \\\lambda\_{\max}\\ (the smallest
+\\\lambda\\ for which \\\beta = 0\\ is a solution) down to \\\lambda\\;
+for SCAD and MCP, a final stage then minimizes the criterion with the
+target penalty, initialized at the \\\ell_1\\ solution.
 
 ### Details on family-specific losses
 
@@ -263,7 +287,7 @@ path.
 
 - `"gumbel"`:
 
-  A location-scale model with extreme-value noise. The base
+  A location-scale model with extreme-value noise. The base negative
   log-likelihood is \$\$\ell_n(\theta, \sigma) = \log(\sigma) +
   \frac{1}{n}\sum\_{i=1}^n \left(z_i + e^{-z_i}\right), \qquad z_i =
   \frac{y_i - \theta_i}{\sigma}.\$\$ With \\\phi(\cdot) = \exp(\cdot)\\
@@ -291,37 +315,11 @@ X <- QuickStartExample$X
 y <- QuickStartExample$y
 fit <- pic(X, y, family = "gaussian", penalty = "scad")
 fit$beta
-#>             [,1]
-#>  [1,] -0.6371864
-#>  [2,]  0.0000000
-#>  [3,]  0.0000000
-#>  [4,]  0.0000000
-#>  [5,] -0.2308360
-#>  [6,]  0.0000000
-#>  [7,]  0.0000000
-#>  [8,]  0.0000000
-#>  [9,]  0.0000000
-#> [10,] -1.1585369
-#> [11,]  0.0000000
-#> [12,]  0.0000000
-#> [13,]  0.0000000
-#> [14,]  0.0000000
-#> [15,]  0.0000000
-#> [16,]  0.0000000
-#> [17,] -0.9759369
-#> [18,]  0.0000000
-#> [19,]  0.0000000
-#> [20,]  0.0000000
-#> [21,]  0.0000000
-#> [22,]  0.0000000
-#> [23,]  0.0000000
-#> [24,]  0.0000000
-#> [25,]  0.2894805
-#> [26,]  0.0000000
-#> [27,]  0.0000000
-#> [28,]  0.0000000
-#> [29,]  0.0000000
-#> [30,]  0.0000000
+#>  [1] -0.6407637  0.0000000  0.0000000  0.0000000 -0.2334080  0.0000000
+#>  [7]  0.0000000  0.0000000  0.0000000 -1.1598526  0.0000000  0.0000000
+#> [13]  0.0000000  0.0000000  0.0000000  0.0000000 -0.9792643  0.0000000
+#> [19]  0.0000000  0.0000000  0.0000000  0.0000000  0.0000000  0.0000000
+#> [25]  0.2921680  0.0000000  0.0000000  0.0000000  0.0000000  0.0000000
 fit$selected
 #> [1] "gene_1" "gene_2" "gene_3" "gene_4" "gene_5"
 ```

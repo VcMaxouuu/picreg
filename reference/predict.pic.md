@@ -22,8 +22,10 @@ predict(object, newx, type = c("response", "link", "class", "survival"), ...)
 - type:
 
   `"link"` (linear predictor), `"response"` (default; family `g`-link
-  applied), `"class"` (binomial only), or `"survival"` (Cox only;
-  returns a list with components `time` and `survival`).
+  applied, and for Cox the relative risk \\\exp(\eta)\\, as in glmnet),
+  `"class"` (binomial only; `0`/`1` labels, where `1` stands for `TRUE`
+  or the second factor level of the training response), or `"survival"`
+  (Cox only; returns a list with components `time` and `survival`).
 
 - ...:
 

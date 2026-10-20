@@ -86,7 +86,9 @@ fista(
 
 ## Value
 
-A list with `coef`, `intercept`, `info`.
+A list with `coef`, `intercept` (`NULL` without intercept), `n_iter`
+(number of iterations run) and `converged` (whether `rel_tol` was
+reached within `max_iter`).
 
 ## Details
 

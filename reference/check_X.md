@@ -3,9 +3,10 @@
 Standardizes columns to zero mean and unit variance (population sd; `n`
 divisor) when `standardize_X` is `TRUE`. When `X_mean` and `X_std` are
 supplied they are reapplied without recomputing — used at prediction
-time on new data. Column names of `X` (or column names of the source
-data frame) are captured and returned as `feature_names`; they are
-propagated through
+time on new data. Column means are computed whenever `X_mean` is not
+supplied, even without standardization. Column names of `X` (or column
+names of the source data frame) are captured and returned as
+`feature_names`; they are propagated through
 [`pic()`](https://vcmaxouuu.github.io/picreg/reference/pic.md) to
 annotate `fit$selected`, [`coef()`](https://rdrr.io/r/stats/coef.html),
 and the coefficient plot.
@@ -13,7 +14,14 @@ and the coefficient plot.
 ## Usage
 
 ``` r
-check_X(X, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
+check_X(
+  X,
+  standardize_X = TRUE,
+  X_mean = NULL,
+  X_std = NULL,
+  keep_feature_values = FALSE,
+  expected_cols = NULL
+)
 ```
 
 ## Arguments
@@ -34,7 +42,17 @@ check_X(X, standardize_X = TRUE, X_mean = NULL, X_std = NULL)
 
   Optional pre-computed column standard deviations.
 
+- keep_feature_values:
+
+  Logical; also return a small grid of representative values per column
+  (used by Cox fits).
+
+- expected_cols:
+
+  Optional required number of columns.
+
 ## Value
 
 A list with components `X`, `X_mean`, `X_std`, `feature_names` (the
-column names of `X` if any, otherwise `NULL`).
+column names of `X` if any, otherwise `NULL`) and `feature_values`
+(`NULL` unless `keep_feature_values = TRUE`).

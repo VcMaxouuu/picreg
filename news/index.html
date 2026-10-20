@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,67 @@
       <small>Source: <a href="https://github.com/VcMaxouuu/picreg/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="picreg-020">picreg 0.2.0<a class="anchor" aria-label="anchor" href="#picreg-020"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-2-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-2-0"></a></h3>
+<ul><li><p>The <code>relax</code> argument of <code><a href="../reference/pic.html">pic()</a></code> has been removed. To debias the coefficients, refit on <code>fit$selected</code> with the estimator of your choice (e.g. <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> or <code><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm()</a></code>).</p></li>
+<li><p>For Cox fits, <code>predict(type = "response")</code> now returns the relative risk <code>exp(eta)</code>, as in <code>glmnet</code>, instead of the linear predictor, and <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> no longer has an <code>(Intercept)</code> row.</p></li>
+<li><p>For SCAD and MCP, the solver now follows Section 3.3 of the paper: the l1 path runs down to the target <code>lambda</code>, and the SCAD / MCP stage starts from that l1 solution (it previously started from the l1 solution at the penultimate path value). Selected supports may differ slightly from previous versions.</p></li>
+<li>
+<p>The default number of Monte Carlo draws is now 2000 everywhere, as in the paper: <code><a href="../reference/lambda_pdb.html">lambda_pdb()</a></code>, <code><a href="../reference/phase_transition.html">phase_transition()</a></code> and <code><a href="../reference/pdb_asymptotic.html">pdb_asymptotic()</a></code> used</p>
+<ol start="5000" style="list-style-type: decimal"><li>
+</li></ol></li>
+<li><p>With <code>intercept = FALSE</code> and <code>standardize = TRUE</code>, the <code>(Intercept)</code> row of <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> now absorbs the centering of the columns on the original scale, so that <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> reproduces <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>. It is zero when <code>X</code> is centered.</p></li>
+<li><p><code>fit$beta</code> is now a plain numeric vector (it was a one-column matrix).</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-0-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
+<ul><li><p><code><a href="../reference/pic.html">pic()</a></code> accepts a <code>pic.lambda_pdb</code> object as <code>lambda</code>, typically <code>fit$lambda_pdb</code>, to reuse a calibration across penalties while keeping it on the new fit for <code><a href="../reference/pdb_summary.html">pdb_summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>. Its family and design dimensions are checked.</p></li>
+<li><p>New <code>lambda_seed</code> argument of <code><a href="../reference/pic.html">pic()</a></code> and <code>seed</code> argument of <code><a href="../reference/lambda_pdb.html">lambda_pdb()</a></code> for a reproducible PDB calibration. Only the calibration is seeded: the global random stream is restored afterwards. Default <code>NULL</code>.</p></li>
+<li><p>Binomial responses may be logical (<code>TRUE</code> mapped to 1) or a two-level factor (second level mapped to 1). <code><a href="../reference/assess.html">assess()</a></code> maps new responses with the training levels.</p></li>
+<li><p>Fits store the matched <code>call</code>, the total number of FISTA iterations <code>n_iter</code> and a <code>converged</code> flag, and <code><a href="../reference/pic.html">pic()</a></code> warns when the final FISTA step reaches <code>maxit</code>.</p></li>
+<li><p><code><a href="../reference/lambda_pdb.html">lambda_pdb()</a></code> results also store <code>seed</code>, <code>family</code>, <code>n</code> and <code>p</code>.</p></li>
+<li>
+<p><code><a href="../reference/phase_transition.html">phase_transition()</a></code>:</p>
+<ul><li>failed fits are excluded from the averages, counted in a new <code>n_failed</code> column of <code>results</code> and reported in a single warning (they were silently counted as failed recoveries);</li>
+<li>with <code>parallel = TRUE</code>, the caller’s <code>future</code> plan is restored on exit (it was reset to <code>sequential</code>), and <code>workers</code> defaults to <code>future::availableCores(omit = 1)</code>, which honors the core limits set by CRAN or a scheduler.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
+<ul><li><p><code><a href="../reference/feature_effects_on_survival.html">feature_effects_on_survival()</a></code> failed on Cox fits with <code>standardize = FALSE</code>.</p></li>
+<li><p>A constant column of <code>X</code> triggered a spurious “does not appear standardized” warning. Constant columns are also detected robustly to rounding.</p></li>
+<li><p>Arguments of <code><a href="../reference/pic.html">pic()</a></code> and <code><a href="../reference/lambda_pdb.html">lambda_pdb()</a></code> are validated with explicit messages. Previously, e.g., <code>lambda = c(0.1, 0.2)</code> gave a cryptic error, <code>lambda = -1</code> produced <code>NaN</code>s and <code>lambda_alpha = 0</code> an infinite <code>lambda</code>.</p></li>
+<li><p><code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> reports a mismatch between the number of columns of <code>newx</code> and of the training <code>X</code>.</p></li>
+<li><p><code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> of a <code><a href="../reference/phase_transition.html">phase_transition()</a></code> result listed no curve, and <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> of a family descriptor missed its final newline.</p></li>
+<li>
+<p>Gumbel family:</p>
+<ul><li>the null intercept and scale, used for the warm start, <code>lambda_max</code> and the <code>"mc_exact"</code> calibration, are now the joint location-scale maximum-likelihood estimates (previously a moment-based intercept followed by a conditional scale estimate);</li>
+<li>the profiled scale is solved by a bracketed, safeguarded Newton method without clipping the exponentials, and the loss and gradient share a single solve;</li>
+<li>fitting is numerically stable under large shifts of the response, and a constant response raises an explicit error;</li>
+<li>
+<code><a href="../reference/assess.html">assess()</a></code> reports the deviance with the scale profiled at its maximum-likelihood estimate instead of a moment estimate.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="performance-0-2-0">Performance<a class="anchor" aria-label="anchor" href="#performance-0-2-0"></a></h3>
+<ul><li><p>The Monte Carlo PDB calibration processes the draws in blocks, which bounds its memory (it allocated two <code>n x n_simu</code> matrices, about 640 MB for <code>n = 20000</code>) without changing the result for a given seed. The Cox permutation calibration stores the simulated events as bytes.</p></li>
+<li><p><code><a href="../reference/concordance_index.html">concordance_index()</a></code> is computed in C++ in O(n log n) time and O(n) memory instead of O(n^2) matrices, and <code><a href="../reference/cox_partial_log_likelihood.html">cox_partial_log_likelihood()</a></code> no longer loops over the unique times.</p></li>
+<li><p>The Cox solver evaluates the loss and its gradient in a single pass over the risk sets and no longer records unused per-iteration diagnostics.</p></li>
+<li><p>The per-column value grids used by <code><a href="../reference/feature_effects_on_survival.html">feature_effects_on_survival()</a></code> are only computed for Cox fits (they were computed and discarded for every family, which dominated preprocessing for wide designs). <code><a href="../reference/feature_effects_on_survival.html">feature_effects_on_survival()</a></code> predicts all values in one call.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="dependencies-0-2-0">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies-0-2-0"></a></h3>
+<ul><li>
+<code>future</code> and <code>future.apply</code> move from Imports to Suggests: they are only needed for <code>phase_transition(parallel = TRUE)</code>. <code>parallel</code> is no longer used.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-0-2-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-2-0"></a></h3>
+<ul><li><p>Fixed the documentation of <code><a href="../reference/lambda_pdb.html">lambda_pdb()</a></code> (probability of selecting a variable under the null, tightness of the Bonferroni bound), of the <code>selected</code> and <code>beta</code> components of a fit, and of the value returned by <code><a href="../reference/phase_transition.html">phase_transition()</a></code>, plus several typos in the vignette (formulas of the Gaussian and exponential objectives, <code>PBD</code>, section references).</p></li>
+<li><p>The vignette comparison with <code>glmnet</code> uses random signs for the non-zero coefficients, as stated in the text.</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.4" id="picreg-014">picreg 0.1.4<a class="anchor" aria-label="anchor" href="#picreg-014"></a></h2><p class="text-muted">CRAN release: 2026-07-20</p>
 <div class="section level3">

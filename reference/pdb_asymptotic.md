@@ -14,7 +14,7 @@ pdb_asymptotic(
   p,
   type = c("gaussian", "binomial", "poisson", "exponential", "gumbel", "cox"),
   alpha = 0.05,
-  n_simu = 5000L,
+  n_simu = 2000L,
   verbose = FALSE
 )
 ```
@@ -40,7 +40,7 @@ pdb_asymptotic(
 
 - n_simu:
 
-  Monte Carlo size for each selector.
+  Monte Carlo size for each selector. Default 2000.
 
 - verbose:
 

@@ -13,7 +13,7 @@ where \(p_\lambda(\cdot)\) depends on the penalty."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,8 +61,8 @@ where \(p_\lambda(\cdot)\) depends on the penalty.</p>
 <dl><dt><code>"lasso"</code></dt>
 <dd><p>L1 (soft-thresholding) penalty:
 $$p_\lambda(|t|) = \lambda |t|.$$
-Convex, gives the strongest shrinkage on large coefficients
-bias does not vanish as \(|t| \to \infty\).</p></dd>
+Convex. Of the three penalties it shrinks large coefficients the
+most: its bias does not vanish as \(|t| \to \infty\).</p></dd>
 
 <dt><code>"scad"</code> (Smoothly Clipped Absolute Deviation, Fan &amp; Li 2001)</dt>
 <dd><p>Non-convex penalty with concavity parameter <code>scad_a &gt; 2</code>

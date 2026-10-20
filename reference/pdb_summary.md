@@ -39,11 +39,11 @@ pdb_summary(fit)
 #>   method       : mc_exact
 #>   alpha        : 0.05
 #>   n_simu       : 2,000
-#>   lambda_hat   : 0.3117
+#>   lambda_hat   : 0.3093
 #> 
 #>   Null distribution:
 #>    min     q05     q25  median     q75     q95     max  
-#> 0.1154  0.1687  0.2018  0.2271  0.2592  0.3117  0.4096  
+#> 0.1069  0.1675  0.2006  0.2285  0.2583  0.3092  0.3886  
 #> 
-#>   mean = 0.2326      sd = 0.0437
+#>   mean = 0.2315      sd = 0.0431
 ```

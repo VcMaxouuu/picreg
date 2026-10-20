@@ -13,9 +13,10 @@ where \\\ell_0\\ denotes the loss evaluated under the null model.
 lambda_pdb(
   X,
   family,
-  n_simu = 5000L,
+  n_simu = 2000L,
   alpha = 0.05,
-  method = c("mc_exact", "mc_gaussian", "analytical")
+  method = c("mc_exact", "mc_gaussian", "analytical"),
+  seed = NULL
 )
 ```
 
@@ -35,7 +36,7 @@ lambda_pdb(
 - n_simu:
 
   Number of Monte Carlo simulations used by the stochastic methods.
-  Ignored when `method = "analytical"`.
+  Ignored when `method = "analytical"`. Default 2000.
 
 - alpha:
 
@@ -43,7 +44,13 @@ lambda_pdb(
 
 - method:
 
-  One of "mc_exact", "mc_gaussian", or "analytical".
+  One of `"mc_exact"`, `"mc_gaussian"`, or `"analytical"`.
+
+- seed:
+
+  Optional seed for the Monte Carlo draws, for a reproducible
+  \\\hat\lambda\\. The caller's random stream is restored afterwards.
+  Default `NULL` (no seeding).
 
 ## Value
 
@@ -68,7 +75,19 @@ An object of class `"pic.lambda_pdb"`.
 
 - n_simu:
 
-  Number of Monte Carlo simulations.
+  Number of Monte Carlo simulations (`NA` for the analytical method).
+
+- seed:
+
+  The seed used, or `NULL`.
+
+- family:
+
+  Name of the family.
+
+- n, p:
+
+  Dimensions of `X`.
 
 ## Details
 
@@ -99,8 +118,10 @@ methods:
   vector is sampled under the null model (\\\beta = 0\\) of the chosen
   family; the family-specific gradient of the loss at \\\beta = 0\\ is
   evaluated on the fixed design \\X\\, and its supremum norm is
-  recorded. The empirical \\(1 - \alpha)\\ quantile of the `n_simu`
-  recorded norms is returned. Most accurate but slowest of the three.
+  recorded. For Gumbel, both null location and scale are estimated
+  jointly by maximum likelihood for every draw. The empirical \\(1 -
+  \alpha)\\ quantile of the `n_simu` recorded norms is returned. Most
+  accurate but slowest of the three.
 
 - `"mc_gaussian"`:
 
@@ -118,9 +139,11 @@ methods:
   bound over the \\p\\ coordinates of the gradient with the standard
   Gaussian tail bound gives \$\$\hat\lambda\_\alpha^{\rm analytical} =
   \Phi^{-1}\\\left(1 - \alpha / (2p)\right)\\ \sqrt{c(n) / n}.\$\$
-  Deterministic and \\O(1)\\ — no simulation. Conservative (slightly
-  over-estimates the true quantile) and gets looser as \\p\\ grows, but
-  useful when speed matters or when Monte Carlo is overkill.
+  Deterministic and \\O(1)\\ — no simulation. Conservative
+  (over-estimates the true quantile): nearly exact when the columns of
+  \\X\\ are weakly correlated, increasingly conservative under strong
+  correlation. Useful when speed matters or when Monte Carlo is
+  overkill.
 
 The `"mc_gaussian"` and `"analytical"` methods use a variance scaling
 factor \\c(n)\\ depending on the family:
@@ -134,10 +157,11 @@ factor \\c(n)\\ depending on the family:
 
 ### Computational cost
 
-Both Monte Carlo methods are dominated by a single \\p \times n\_{\rm
-simu}\\ matrix product \\X^\top R\\, where \\R\\ stacks the simulated
-residuals. This product is dispatched to BLAS as a single \\\tt gemm\\,
-which is essentially as fast as a Monte Carlo selector can be on dense
+Both Monte Carlo methods are dominated by the \\p \times n\_{\rm simu}\\
+matrix product \\X^\top R\\, where \\R\\ stacks the simulated residuals.
+This product is dispatched to BLAS as \\\tt gemm\\ calls over blocks of
+draws, which bounds the memory footprint without changing the result,
+and is essentially as fast as a Monte Carlo selector can be on dense
 designs. For very large \\n\\ or \\p\\, however, the constant becomes
 large and `"mc_exact"` may be unnecessarily expensive:
 
@@ -147,8 +171,8 @@ large and `"mc_exact"` may be unnecessarily expensive:
   generation, fewer dependencies on \\y\\-draws).
 
 - `"analytical"` is \\O(1)\\ and useful as a quick upper bound —
-  slightly conservative, but accurate enough for triage and for very
-  high \\p\\ where the Bonferroni tail is tight.
+  conservative, but accurate enough for triage and for weakly correlated
+  designs, where the union bound is nearly tight.
 
 Practical rule of thumb: prefer `"mc_exact"` for small to moderate
 problems (default), `"mc_gaussian"` once \\n\\ grows and the design is
@@ -160,10 +184,10 @@ The level \\\alpha\\ is the nominal Type-I error of the test of
 \\H_0\\\colon \beta = 0\\. By construction of the quantile,
 \$\$\Pr\\\left(\left\\\nabla \ell_0\right\\\_\infty \> \hat\lambda^{\rm
 PDB}\_\alpha \\\big\|\\ H_0\right) = \alpha,\$\$ so under the null model
-no variable enters the active set with probability at most \\\alpha\\.
-With the default \\\alpha = 0.05\\, this caps the false-discovery rate
-at \\5\\\\ under the null: when the data carry no signal, picreg returns
-the empty support \\95\\\\ of the time.
+at least one variable enters the active set with probability at most
+\\\alpha\\. With the default \\\alpha = 0.05\\, this caps the
+false-discovery rate at \\5\\\\ under the null: when the data carry no
+signal, picreg returns the empty support \\95\\\\ of the time.
 
 ## Examples
 
@@ -177,5 +201,5 @@ lam <- lambda_pdb(
 #> Warning: lambda_pdb: design matrix X does not appear standardized; results may be unreliable.
 print(lam)
 #> pic lambda_pdb (method = mc_exact, alpha = 0.05)
-#>   lambda = 0.295355
+#>   lambda = 0.297525
 ```

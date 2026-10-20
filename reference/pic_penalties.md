@@ -11,8 +11,9 @@ where \\p\_\lambda(\cdot)\\ depends on the penalty.
 - `"lasso"`:
 
   L1 (soft-thresholding) penalty: \$\$p\_\lambda(\|t\|) = \lambda
-  \|t\|.\$\$ Convex, gives the strongest shrinkage on large coefficients
-  bias does not vanish as \\\|t\| \to \infty\\.
+  \|t\|.\$\$ Convex. Of the three penalties it shrinks large
+  coefficients the most: its bias does not vanish as \\\|t\| \to
+  \infty\\.
 
 - `"scad"` (Smoothly Clipped Absolute Deviation, Fan & Li 2001):
 

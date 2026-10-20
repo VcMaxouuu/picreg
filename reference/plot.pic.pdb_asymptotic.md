@@ -8,7 +8,7 @@ lines are added per panel:
 - \\\hat\lambda^{\rm PDB}\_\alpha\\ - solid navy, the empirical (1 -
   alpha) quantile of `"mc_exact"` (what pic would actually use).
 
-- \\\hat\lambda\_{analytical}\\ - dashed black, the Bonferroni
+- \\\hat\lambda\_{analytical}\\ - dotted black, the Bonferroni
   closed-form bound.
 
 ## Usage

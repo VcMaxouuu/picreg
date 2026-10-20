@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -65,8 +65,11 @@
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
 <dd><p><code>"link"</code> (linear predictor), <code>"response"</code> (default; family
-<code>g</code>-link applied), <code>"class"</code> (binomial only), or <code>"survival"</code> (Cox only;
-returns a list with components <code>time</code> and <code>survival</code>).</p></dd>
+<code>g</code>-link applied, and for Cox the relative risk \(\exp(\eta)\), as
+in <span class="pkg">glmnet</span>), <code>"class"</code> (binomial only; <code>0</code>/<code>1</code> labels, where <code>1</code>
+stands for <code>TRUE</code> or the second factor level of the training response),
+or <code>"survival"</code> (Cox only; returns a list with components <code>time</code> and
+<code>survival</code>).</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

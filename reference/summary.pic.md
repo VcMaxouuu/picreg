@@ -45,16 +45,16 @@ summary(fit)
 #> pic fit summary
 #>   family    : gaussian
 #>   penalty   : lasso
-#>   lambda    : 0.3099
+#>   lambda    : 0.312
 #>   dimensions: n = 100, p = 30
 #>   selected  : 5 / 30
-#>   intercept : 0.006378
+#>   intercept : 0.006838
 #> 
 #>   Non-zero coefficients (original scale):
 #>  variable coefficient
-#>    gene_3     -0.7544
-#>    gene_4     -0.6537
-#>    gene_1     -0.4065
-#>    gene_5      0.1422
-#>    gene_2     -0.0502
+#>    gene_3     -0.7470
+#>    gene_4     -0.6438
+#>    gene_1     -0.3988
+#>    gene_5      0.1335
+#>    gene_2     -0.0421
 ```

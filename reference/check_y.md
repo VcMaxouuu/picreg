@@ -1,6 +1,7 @@
 # Validate response according to its distributional kind.
 
-Validate response according to its distributional kind.
+A binary response may also be logical (`FALSE`/`TRUE` mapped to `0`/`1`)
+or a two-level factor (first level mapped to `0`, second to `1`).
 
 ## Usage
 

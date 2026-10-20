@@ -15,7 +15,7 @@ and Cox proportional hazards."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">picreg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,12 +67,12 @@ and Cox proportional hazards.</p>
 <span>  standardize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  intercept <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  lambda_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mc_exact"</span>, <span class="st">"mc_gaussian"</span>, <span class="st">"analytical"</span><span class="op">)</span>,</span>
-<span>  relax <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  mcp_gamma <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  scad_a <span class="op">=</span> <span class="fl">3.7</span>,</span>
 <span>  lambda <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lambda_alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  lambda_n_simu <span class="op">=</span> <span class="fl">2000</span>,</span>
+<span>  lambda_seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-05</span>,</span>
 <span>  path_length <span class="op">=</span> <span class="fl">10L</span>,</span>
 <span>  maxit <span class="op">=</span> <span class="fl">1000</span></span>
@@ -93,7 +93,8 @@ two columns and no <code>NA</code>, <code>NaN</code>, or infinite values.</p></d
 <dt id="arg-y">y<a class="anchor" aria-label="anchor" href="#arg-y"></a></dt>
 <dd><p>Response variable with length <code>n</code>. For Gaussian and Gumbel models,
 <code>y</code> must be numeric. For Binomial models, <code>y</code> must contain only <code>0</code> and
-<code>1</code>. For Poisson and Exponential models, <code>y</code> must be non-negative. For
+<code>1</code>, or be logical (<code>TRUE</code> = 1) or a two-level factor (second level
+= 1). For Poisson and Exponential models, <code>y</code> must be non-negative. For
 <code>family = "cox"</code>, <code>y</code> must be a two-column numeric matrix <code>(time, event)</code>,
 where <code>time</code> is non-negative and <code>event</code> is coded as <code>0</code> or <code>1</code>.</p></dd>
 
@@ -126,7 +127,8 @@ assumes the data are already centered (see <code>intercept</code>).</p></dd>
 
 <dt id="arg-intercept">intercept<a class="anchor" aria-label="anchor" href="#arg-intercept"></a></dt>
 <dd><p>Whether to fit an unpenalized intercept. Forced to
-<code>FALSE</code> for the Cox family. We assume the data has been centered if intercept = FALSE.</p></dd>
+<code>FALSE</code> for the Cox family. When <code>intercept = FALSE</code>, the data are
+assumed to be centered.</p></dd>
 
 
 <dt id="arg-lambda-method">lambda_method<a class="anchor" aria-label="anchor" href="#arg-lambda-method"></a></dt>
@@ -134,13 +136,8 @@ assumes the data are already centered (see <code>intercept</code>).</p></dd>
 <code><a href="lambda_pdb.html">lambda_pdb()</a></code> for details. The default <code>"mc_exact"</code> is a safe choice
 for small to moderate designs; for very large \(n\) or \(p\),
 <code>"mc_gaussian"</code> matches <code>"mc_exact"</code> closely at a fraction of the
-cost (it amortises only one BLAS \(\tt gemm\), no family-specific
-residual draws), and <code>"analytical"</code> is closed-form.</p></dd>
-
-
-<dt id="arg-relax">relax<a class="anchor" aria-label="anchor" href="#arg-relax"></a></dt>
-<dd><p>If <code>TRUE</code>, run an unpenalized refit on the selected support
-after the regularization path (debiasing).</p></dd>
+cost (it skips the family-specific null draws and residual
+evaluations), and <code>"analytical"</code> is closed-form.</p></dd>
 
 
 <dt id="arg-mcp-gamma">mcp_gamma<a class="anchor" aria-label="anchor" href="#arg-mcp-gamma"></a></dt>
@@ -152,8 +149,11 @@ after the regularization path (debiasing).</p></dd>
 
 
 <dt id="arg-lambda">lambda<a class="anchor" aria-label="anchor" href="#arg-lambda"></a></dt>
-<dd><p>Optional user-supplied regularization parameter. When <code>NULL</code>,
-<code><a href="lambda_pdb.html">lambda_pdb()</a></code> is used to select it automatically. Providing <code>lambda</code>
+<dd><p>Optional regularization parameter. When <code>NULL</code>,
+<code><a href="lambda_pdb.html">lambda_pdb()</a></code> is used to select it automatically. Either a single
+non-negative number, or a <code>"pic.lambda_pdb"</code> object (typically
+<code>fit$lambda_pdb</code> from a previous fit on the same <code>X</code> and family), whose
+calibration is then reused and kept on the new fit. Providing <code>lambda</code>
 avoids recomputing the PDB calibration, which is useful for example when
 fitting several penalties (<code>"lasso"</code>, <code>"scad"</code>, <code>"mcp"</code>) on the same
 dataset, since the PDB choice of \(\lambda\) does not depend on the
@@ -168,6 +168,12 @@ penalty itself.</p></dd>
 <dd><p>Number of Monte Carlo draws for PDB. See <code><a href="lambda_pdb.html">lambda_pdb()</a></code>.</p></dd>
 
 
+<dt id="arg-lambda-seed">lambda_seed<a class="anchor" aria-label="anchor" href="#arg-lambda-seed"></a></dt>
+<dd><p>Optional seed for the Monte Carlo PDB calibration, for
+a reproducible \(\lambda\). Only the calibration is seeded; the
+global random stream is left unchanged. Default <code>NULL</code> (no seeding).</p></dd>
+
+
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
 <dd><p>FISTA convergence tolerance at the final path step.</p></dd>
 
@@ -179,14 +185,20 @@ Default 10.</p></dd>
 
 
 <dt id="arg-maxit">maxit<a class="anchor" aria-label="anchor" href="#arg-maxit"></a></dt>
-<dd><p>Maximum number of iterations for FISTA if convergence is not yet reached.</p></dd>
+<dd><p>Maximum number of FISTA iterations per path step. A warning
+is issued if the final step does not converge within <code>maxit</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>c("pic.&lt;family&gt;", "pic")</code>.</p>
-<dl><dt>beta</dt>
-<dd><p>Fitted coefficients (length <code>p</code>).</p></dd>
+<dl><dt>call</dt>
+<dd><p>The matched call.</p></dd>
+
+<dt>beta</dt>
+<dd><p>Fitted coefficients (length <code>p</code>), on the standardized
+scale when <code>standardize = TRUE</code>. Use <code><a href="coef.pic.html">coef.pic()</a></code> for the
+original scale of <code>X</code>.</p></dd>
 
 <dt>intercept</dt>
 <dd><p>Fitted intercept or <code>NULL</code>.</p></dd>
@@ -195,7 +207,8 @@ Default 10.</p></dd>
 <dd><p>The number of nonzero coefficients.</p></dd>
 
 <dt>selected</dt>
-<dd><p>Indices of the nonzero coefficients.</p></dd>
+<dd><p>Names of the selected variables when <code>X</code> has column
+names, otherwise their integer column indices.</p></dd>
 
 <dt>lambda</dt>
 <dd><p>\(\lambda\) used during training (PDB or user-supplied).</p></dd>
@@ -207,13 +220,21 @@ Default 10.</p></dd>
 <dd><p>The penalty object used.</p></dd>
 
 <dt>lambda_pdb</dt>
-<dd><p>Result from <code><a href="lambda_pdb.html">lambda_pdb()</a></code> if \(\lambda\) is not user-supplied.</p></dd>
+<dd><p>The <code><a href="lambda_pdb.html">lambda_pdb()</a></code> calibration, or <code>NULL</code> when a
+numeric \(\lambda\) is supplied.</p></dd>
 
 <dt>n_samples</dt>
 <dd><p>The number of observations in the training set.</p></dd>
 
 <dt>n_features</dt>
 <dd><p>The number of variables in the training set.</p></dd>
+
+<dt>n_iter</dt>
+<dd><p>Total number of FISTA iterations over the path.</p></dd>
+
+<dt>converged</dt>
+<dd><p>Whether the final FISTA step reached <code>tol</code> within
+<code>maxit</code> iterations.</p></dd>
 
 </dl><p>For <code>family = "cox"</code>, the fit additionally carries:</p>
 <dl><dt>baseline_cumulative_hazard</dt>
@@ -231,7 +252,7 @@ Default 10.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Minimises the objective function
+    <p>Minimizes the objective function
 $$\hat\beta = \arg\min_\beta\; L(\beta)
        \;+\; \lambda_\alpha^{\rm PDB}\,\mathrm{pen}(\beta)
        \quad\text{with}\quad
@@ -247,8 +268,12 @@ non-zero coefficients. Here, \(\phi\) and \(g\) are
 family-specific transformations chosen so that the gradient at the
 null has a distribution free of the nuisance parameter, which is
 precisely what makes the use of \(\lambda^{\rm PDB}_\alpha\)
-valid. Optimization is performed using a warm-started FISTA
-regularization path.</p><div class="section">
+valid. Optimization follows Section 3.3 of the paper: a warm-started
+FISTA path with the \(\ell_1\) penalty runs from \(\lambda_{\max}\)
+(the smallest \(\lambda\) for which \(\beta = 0\) is a solution)
+down to \(\lambda\); for SCAD and MCP, a final stage then minimizes
+the criterion with the target penalty, initialized at the
+\(\ell_1\) solution.</p><div class="section">
 <h3 id="details-on-family-specific-losses">Details on family-specific losses<a class="anchor" aria-label="anchor" href="#details-on-family-specific-losses"></a></h3>
 
 
@@ -289,7 +314,7 @@ $$L(\beta) = \frac{1}{n}\sum_{i=1}^n
 
 <dt><code>"gumbel"</code></dt>
 <dd><p>A location-scale model with extreme-value noise. The base
-log-likelihood is
+negative log-likelihood is
 $$\ell_n(\theta, \sigma) = \log(\sigma)
       + \frac{1}{n}\sum_{i=1}^n \left(z_i + e^{-z_i}\right),
       \qquad z_i = \frac{y_i - \theta_i}{\sigma}.$$
@@ -323,37 +348,11 @@ tied event times, and the model is always fitted without an intercept.</p></dd>
 <span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">QuickStartExample</span><span class="op">$</span><span class="va">y</span></span></span>
 <span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">pic</span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family <span class="op">=</span> <span class="st">"gaussian"</span>, penalty <span class="op">=</span> <span class="st">"scad"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">fit</span><span class="op">$</span><span class="va">beta</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>             [,1]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] -0.6371864</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [2,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [3,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [4,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] -0.2308360</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] -1.1585369</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [11,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [12,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [13,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [14,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [15,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [16,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [17,] -0.9759369</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [18,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [19,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [20,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [21,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [22,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [23,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [24,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [25,]  0.2894805</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [26,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [27,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [28,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [29,]  0.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [30,]  0.0000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.6407637  0.0000000  0.0000000  0.0000000 -0.2334080  0.0000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.0000000  0.0000000  0.0000000 -1.1598526  0.0000000  0.0000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [13]  0.0000000  0.0000000  0.0000000  0.0000000 -0.9792643  0.0000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [19]  0.0000000  0.0000000  0.0000000  0.0000000  0.0000000  0.0000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [25]  0.2921680  0.0000000  0.0000000  0.0000000  0.0000000  0.0000000</span>
 <span class="r-in"><span><span class="va">fit</span><span class="op">$</span><span class="va">selected</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "gene_1" "gene_2" "gene_3" "gene_4" "gene_5"</span>
 </code></pre></div>
